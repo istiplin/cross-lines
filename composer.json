@@ -1,0 +1,14 @@
+{
+    "autoload":{
+        "psr-4":{
+            "models\\":"models",
+            "sys\\":"sys"
+        }
+    },
+    "require-dev": {
+        "codeception/codeception": "^3.0"
+    },
+    "require": {
+        "codeception/verify": "^1.0"
+    }
+}
