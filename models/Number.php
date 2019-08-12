@@ -97,157 +97,23 @@ class Number extends BaseObject
 
         $cells = $this->cells;
 
-        if ($type=='min')
-        {
-            $resMinPos = $currPos = 0;
-            $prevName = 'prev';
-            $nextName = 'next';
-            $next = 1;
-            $groupEnd = 'groupEnd';
-            $groupStart = 'groupStart';
-            $nextGroupIsEmpty = 'nextGroupIsEmpty';
+        $resMinPos = 0;
+        $prevName = 'prev';
+        $next = 1;
+        $direction = 'right';
 
-            $max = 'max';
-            $minPos = '_minPos';
-            $maxPos = '_maxPos';
-            $begNumInd = 0;
-            $end = 'end';
-            $start = 'start';
-            $condPos = function($maxPos,$groupEnd){return $maxPos>$groupEnd;};
-            $condNumBefore = function($i,$ind){return $i<$ind;};
-            $condNumAfter = function($i,$ind){return $i<=$ind;};
-        }
-        elseif ($type=='max')
+        if ($type=='max')
         {
-            $resMinPos = $currPos = $cells->count-1;
+            $resMinPos = $cells->count-1;
             $prevName = 'next';
-            $nextName = 'prev';
             $next = -1;
-            $groupEnd = 'groupStart';
-            $groupStart = 'groupEnd';
-            $nextGroupIsEmpty = 'prevGroupIsEmpty';
-
-            $max = 'min';
-            $minPos = '_maxPos';
-            $maxPos = '_minPos';
-            $begNumInd = $this->numbers->count-1;
-            $end = 'start';
-            $start = 'end';
-            $condPos = function($maxPos,$groupEnd){return $maxPos<$groupEnd;};
-            $condNumBefore = function($i,$ind){return $i>$ind;};
-            $condNumAfter = function($i,$ind){return $i>=$ind;};
+            $direction = 'left';
         }
 
         if ($this->$prevName!==null)
-            $resMinPos = $currPos = $this->$prevName->getPos($type) + $next * ($this->$prevName->length + 1);
-            //$resMinPos = $currPos = $cells->getNextFullPosToRight($this->$prevName->getPos($type), $this->$prevName->length);
+            $resMinPos = $this->$prevName->getPos($type) + $next * ($this->$prevName->length + 1);
 
-        if ($cells[$resMinPos]->isFull()) {
-            $maxLength = 0;
-            for ($i = $begNumInd; $condNumBefore($i, $this->_ind); $i += $next) {
-                $maxLength = max($maxLength, $this->numbers[$i]->length);
-            }
-
-            $group = $cells[$resMinPos]->group;
-            if ($group->length > $maxLength) {
-                $this->$minPos = $resMinPos;
-                $groupEnd = $group->$start+$next*($this->_length-1);
-                if ($condPos($this->getPos($max), $groupEnd))
-                    $this->$maxPos = $groupEnd;
-            }
-        }
-
-        while(-1<$currPos AND $currPos<$cells->count AND $this->$minPos===null)
-        {
-            //если текущая клетка - крестик
-            if ($cells[$currPos]->isEmpty()) {
-                //смещаем указатели в следующую группу
-                $resMinPos = $currPos = $cells[$currPos]->$groupEnd + $next;
-            }
-            //иначе если текущая клетка не заполнена
-            elseif ($cells[$currPos]->isUnknown()) {
-                //определяем конечную позицию незаполненной группы
-                $endUnknownPos = $cells[$currPos]->$groupEnd;
-                //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
-                $dist = $cells[$resMinPos]->getDist($endUnknownPos);
-                //если расстояние больше текущего числа или
-                if ($dist > $this->_length OR
-                    //расстояние равно текущему числу и следующая группа крестик или конец
-                    $dist == $this->_length AND $cells[$currPos]->$nextGroupIsEmpty)
-                        //считаем последеняя пока что результирующая позиция, окончательно ей являестя
-                        $this->$minPos = $resMinPos;
-                else
-                    //иначе смещаем указатель к следующей группе
-                    $currPos = $cells[$currPos]->$groupEnd + $next;
-            }
-            //иначе если текущая клетка закрашена
-            elseif ($cells[$currPos]->isFull()) {
-                //если длина текущей группы больше текущего числа
-                if ($cells[$currPos]->groupLength > $this->_length) {
-                    //смещаем указатели на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
-                    $resMinPos = $currPos = $cells[$currPos]->$groupEnd + $next*2;
-                }
-                //если длина текущей группы равно текущему числу
-                elseif ($cells[$currPos]->groupLength == $this->_length) {
-                    //считаем последеняя пока что результирующая позиция, окончательно ей являестя
-                    $resMinPos = $cells[$currPos]->$groupStart;
-                    $this->$minPos = $resMinPos;
-                }
-                //если длина текущей группы меньше текущего числа
-                elseif ($cells[$currPos]->groupLength < $this->_length) {
-                    //определяем конечную позицию текущей группы
-                    $endFullPos = $cells[$currPos]->$groupEnd;
-                    //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
-                    $dist = $cells[$resMinPos]->getDist($endFullPos);
-
-                    //если расстояние меньше текущего числа
-                    if ($dist < $this->_length)
-                        //иначе смещаем указатель к следующей группе
-                        $currPos = $cells[$currPos]->$groupEnd + $next;
-                    //иначе если расстояние равно текущему числу
-                    elseif ($dist == $this->_length)
-                        //считаем, что последняя, пока что, результирующая позиция, окончательно ей являестя
-                        $this->$minPos = $resMinPos;
-                    //иначе если расстояние больше текущего числа
-                    elseif ($dist > $this->_length)
-                    {
-                        //если результирующая позиция находится в незаполненной клетке
-                        if ($cells[$resMinPos]->isUnknown())
-                            //считаем, что она окончательно является результирующей
-                            $resMinPos = $endFullPos - $next*($this->_length - 1);
-                        //иначе если  результирующая позиция находится в закрашенной клетке
-                        elseif ($cells[$resMinPos]->isFull())
-                            //смещаем её на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
-                            $resMinPos = $cells[$resMinPos]->$groupEnd + $next*2;
-                    }
-                }
-            }
-        }
-
-        $maxLength = 0;
-        if ($this->$minPos!==null)
-        {
-            for ($i=$begNumInd; $condNumAfter($i,$this->_ind); $i+=$next) {
-                $maxLength = max($maxLength, $this->numbers[$i]->length);
-            }
-
-            $group = $cells[$this->$minPos]->group;
-            while ($group)
-            {
-                if ($group->isFull())
-                {
-                    if ($group->length>$maxLength)
-                    {
-                        if($condPos($this->getPos($max),$group->$end))
-                            $this->$maxPos = $group->$end-2*$next;
-                    }
-                    break;
-                }
-                $group = $group->$nextName;
-            }
-        }
-
-        return $this->$minPos;
+        return $this->$minPos = $cells->getFullBegPos($resMinPos, $this->_length, $direction);
     }
 
     public function setMinPos($pos)

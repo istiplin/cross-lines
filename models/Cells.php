@@ -35,12 +35,85 @@ class Cells extends BaseObject implements \ArrayAccess
         }
     }
 
-    //возвращает начальную позицию следующей зкрашенной группы,
-    //находящейся со стороны $direction от предыдущей закрашенной группы.
-    //Предыдущая закрашенная группа начинается с позиции $begPos и её длина $fullLength,
-    public function getNextFullPosToRight($begPos, $fullLength, $direction)
+    //определяет позицию клетки, с которой начинается и может поместиться закрашенная группа длинной $fullLength
+    //начиная поиск с позиции $begPos в направлении $direction
+    public function getFullBegPos($begPos, $fullLength, $direction): int
     {
+        $next = 1;
+        $groupStart = 'groupStart';
+        $groupEnd = 'groupEnd';
+        $nextGroupIsEmpty = 'nextGroupIsEmpty';
+        if ($direction=='left')
+        {
+            $next = -1;
+            $groupStart = 'groupEnd';
+            $groupEnd = 'groupStart';
+            $nextGroupIsEmpty = 'prevGroupIsEmpty';
+        }
 
+        $fullBegPos = $currPos = $begPos;
+        while(-1<$currPos AND $currPos<$this->_count)
+        {
+            //если текущая клетка - крестик
+            if ($this[$currPos]->isEmpty())
+                //смещаем указатели в следующую группу
+                $fullBegPos = $currPos = $this[$currPos]->$groupEnd + $next;
+            //иначе если текущая клетка не заполнена
+            elseif ($this[$currPos]->isUnknown()) {
+                //определяем конечную позицию незаполненной группы
+                $endUnknownPos = $this[$currPos]->$groupEnd;
+                //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
+                $dist = $this[$fullBegPos]->getDist($endUnknownPos);
+                //если расстояние больше текущего числа или
+                if ($dist > $fullLength OR
+                    //расстояние равно текущему числу и следующая группа крестик или конец
+                    $dist == $fullLength AND $this[$currPos]->$nextGroupIsEmpty)
+                    //считаем последеняя пока что результирующая позиция, окончательно ей являестя
+                    return $fullBegPos;
+                else
+                    //иначе смещаем указатель к следующей группе
+                    $currPos = $this[$currPos]->$groupEnd + $next;
+            }
+            //иначе если текущая клетка закрашена
+            elseif ($this[$currPos]->isFull()) {
+                //если длина текущей группы больше текущего числа
+                if ($this[$currPos]->groupLength > $fullLength)
+                    //смещаем указатели на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
+                    $fullBegPos = $currPos = $this[$currPos]->$groupEnd + $next*2;
+                //если длина текущей группы равно текущему числу
+                elseif ($this[$currPos]->groupLength == $fullLength)
+                    //считаем последеняя пока что результирующая позиция, окончательно ей являестя
+                    return $this[$currPos]->$groupStart;
+                //если длина текущей группы меньше текущего числа
+                elseif ($this[$currPos]->groupLength < $fullLength) {
+                    //определяем конечную позицию текущей группы
+                    $endFullPos = $this[$currPos]->$groupEnd;
+                    //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
+                    $dist = $this[$fullBegPos]->getDist($endFullPos);
+
+                    //если расстояние меньше текущего числа
+                    if ($dist < $fullLength)
+                        //иначе смещаем указатель к следующей группе
+                        $currPos = $this[$currPos]->$groupEnd + $next;
+                    //иначе если расстояние равно текущему числу
+                    elseif ($dist == $fullLength)
+                        //считаем, что последняя, пока что, результирующая позиция, окончательно ей являестя
+                        return $fullBegPos;
+                    //иначе если расстояние больше текущего числа
+                    elseif ($dist > $fullLength)
+                    {
+                        //если результирующая позиция находится в незаполненной клетке
+                        if ($this[$fullBegPos]->isUnknown())
+                            //считаем, что она окончательно является результирующей
+                            $fullBegPos = $endFullPos - $next*($fullLength - 1);
+                        //иначе если  результирующая позиция находится в закрашенной клетке
+                        elseif ($this[$fullBegPos]->isFull())
+                            //смещаем её на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
+                            $fullBegPos = $this[$fullBegPos]->$groupEnd + $next*2;
+                    }
+                }
+            }
+        }
     }
 
     public function getNumbers(): Numbers

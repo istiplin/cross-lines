@@ -153,9 +153,25 @@ class Groups extends BaseObject implements \ArrayAccess
 
     public function view()
     {
-        $this->setList();
-        $this->deleteGroupNumbers();
+        //$this->setList();
+        //$this->deleteGroupNumbers();
         for($i=0; $i<$this->count; $i++)
             echo $this->list[$i]->getView(2);
+    }
+
+    public function deleteGroupNumbersFromSideCell2($side='left')
+    {
+        for($i=0; $i<$this->_count; $i++)
+        {
+            if (!$this->_list[$i]->isFull())
+                continue;
+            $this->_list[$i]->setGroupNumbers($this->numbers->list);
+        }
+        for($i=0; $i<$this->_count; $i++)
+        {
+            if (!$this->_list[$i]->isFull())
+                continue;
+            $this->_list[$i]->deleteGroupNumbersFromSideCell2();
+        }
     }
 }
