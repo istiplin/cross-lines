@@ -15,23 +15,17 @@ class EmptyGroup extends BaseObject
     protected $_ind;
 
     protected $_prev;
-    //protected $_prevUnknown;
-    //protected $_prevFull;
-    //protected $_prevEmpty;
     
     protected $_next;
-    //protected $_nextUnknown;
-    //protected $_nextFull;
-    //protected $_nextEmpty;
 
-    public static function initial($groups,$state,$start,$ind,$prev=null)
+    public static function initial($groups,string $state,$start,$ind,$prev=null)
     {
-        if ($state==Cell::UNKNOWN_STATE)
-                return new UnknownGroup($groups,$start,$ind,$prev);
-        if ($state==Cell::FULL_STATE)
-                return new FullGroup($groups,$start,$ind,$prev);
-        if ($state==Cell::EMPTY_STATE)
-                return new self($groups,$start,$ind,$prev);
+        if ($state===Cell::UNKNOWN_STATE)
+            return new UnknownGroup($groups,$start,$ind,$prev);
+        if ($state===Cell::FULL_STATE)
+            return new FullGroup($groups,$start,$ind,$prev);
+        if ($state===Cell::EMPTY_STATE)
+            return new self($groups,$start,$ind,$prev);
         throw new \Exception("state=$state is not 'Unknown','FULL' or 'Empty' ");
     }
 
@@ -43,15 +37,10 @@ class EmptyGroup extends BaseObject
 
         if ($prev!==null)
         {
-            //устанавливаем ссылку на предыдущий отрезок
+            //устанавливаем ссылку на предыдую группу
             $this->prev = $prev;
-            
-            //$this->_prevUnknown = $prev
-            
-            //if ($prev->isEmpty())
-            //    $this->_prevEmpty = $prev;
 
-            //в предыдущем отрезке устанавливаем ссылку на текущий отрезок
+            //в предыдущей группе устанавливаем ссылку на текущую группу
             $this->prev->next = $this;
         }
     }
@@ -214,4 +203,6 @@ class EmptyGroup extends BaseObject
 
         return $view;
     }
+    
+    public function setEmptyCells(){}
 }

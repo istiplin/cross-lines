@@ -7,26 +7,26 @@ use models\Section;
 
 class Test extends \Codeception\Test\Unit
 {
-    public function testResolve()
+    public function testResolveLine()
     {
-        $resolves = require 'tests/_data/resolves.php';
+        $resolves = require 'tests/_data/lineResolves.php';
 
         foreach($resolves as $key=>$resolve)
         {
             if (array_key_exists(2, $resolve))
             {
-                $this->checkResolve($key,$resolve[0],$resolve[1],false,$resolve[2]);
-                $this->checkResolve($key,$resolve[0],$resolve[1],true,$resolve[2]);
+                $this->checkResolveLine($key,$resolve[0],$resolve[1],false,$resolve[2]);
+                $this->checkResolveLine($key,$resolve[0],$resolve[1],true,$resolve[2]);
             }
         }
     }
 	
-    private function checkResolve($ind,$numbers,$cells,$isMirror,$result)
+    private function checkResolveLine($ind,$numbers,$cellsStr,$isMirror,$result)
     {
-        $model = new Line($ind,$numbers,$cells,$isMirror);
-        $model->resolve();
+        $model = new Line($ind,$numbers,$cellsStr,true,null,$isMirror);
+        $model->resolve($cellsStr);
         $newCells = $model->cellsView;
-        $message = 'message: '.$ind.' '.$cells.'->'.$newCells;
+        $message = 'message: '.$ind.' '.$cellsStr.'->'.$newCells;
         $begMess = '';
         if ($isMirror)
             $begMess = 'MIRROR';

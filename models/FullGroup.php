@@ -40,7 +40,8 @@ class FullGroup extends EmptyGroup
 
         if ($this->_groupNumbers!==null)
             return;
-        
+
+
         $this->_groupNumbers = [];
         for ($i=0; $i<$this->numbers->count; $i++)
         {
@@ -49,10 +50,17 @@ class FullGroup extends EmptyGroup
             if ($minPos<=$this->_start AND $this->_end<=$maxPos)
                 $this->_groupNumbers[$i] = $this->numbers[$i];
         }
+
+        //$this->_groupNumbers = $this->numbers->list;
         if (count($this->_groupNumbers)===0)
             throw new \Exception('error in '.__CLASS__.' line '.$this->line->ind.' number '.$this->ind.' this->_groupNumbers has count=0.');
     }
 
+    public function getGroupNumbers()
+    {
+        return $this->_groupNumbers;
+    }
+    
     public function getGroupNumbersKeys()
     {
         return array_keys($this->_groupNumbers);
@@ -61,10 +69,12 @@ class FullGroup extends EmptyGroup
     private function unsetGroupNumber($ind)
     {
         if (!array_key_exists($ind, $this->_groupNumbers))
-            return;   
-        unset($this->_groupNumbers[$ind]);
+            return;
+
+        //if (count($this->_groupNumbers)>1)
+            unset($this->_groupNumbers[$ind]);
         if (count($this->_groupNumbers)==0)
-            throw new \Exception('error in '.__CLASS__.' line '.$this->line->ind.' number '.$this->ind.' this->_groupNumbers has count=0.');
+            throw new \Exception('error in '.__CLASS__.' line='.$this->line->ind.', numberGroup='.$this->ind.', currNum='.$ind.' this->_groupNumbers has count=0.');
     }
 
     public function getGroupNumbersMinInd():int
@@ -195,8 +205,8 @@ class FullGroup extends EmptyGroup
         if (count($this->_groupNumbers)==1)
         {
             $number = $this->numbers[key($this->_groupNumbers)];
-            $number->setMaxPos($this->start+$number->length-1);
-            $number->setMinPos($this->end-$number->length+1);
+            $number->setPos('max',$this->start+$number->length-1);
+            $number->setPos('min',$this->end-$number->length+1);
         }
 
         return $this->_groupNumbers;
@@ -252,181 +262,92 @@ class FullGroup extends EmptyGroup
         }
     }
 
-
-    public function deleteGroupNumbersFromSideCell2($side='left')
+    public function deleteGroupNumbersFromSideCell($side='left')
     {
+        $ind = $this->_ind;
+        
         $groups = $this->_groups;
         $numbers = $this->numbers;
         $cells = $this->cells;
-        $currPos = 0;
+
         $currNum = 0;
-        for ($i=0; $i<=$this->_ind; $i++)
+        $begNumber = 0;
+
+        $rightDir = 'right';
+        $leftDir = 'left';
+        
+        $start = 'start';
+
+        $setMaxPos = 'setMaxPos';
+        $max = 'max';
+
+        $step = 1;
+
+        if ($side=='right')
         {
-            if ($groups[$i]->isFull())
-            {
-                do {
-                    $oldCurrNum=$currNum;
+            $currNum = $numbers->count-1;
+            $begNumber = $groups->count-1;
 
-                    while ($groups[$i]->length > $this->numbers[$currNum]->length) {
-                        $currPos = $this->cells->getFullBegPos($currPos, $numbers[$currNum]->length, 'right');
-                        $currPos += $numbers[$currNum]->length + 1;
-                        $this->unsetGroupNumber($currNum);
-                        $currNum++;
-                    }
-
-                    //определяем длину слева от текущей группы
-                    $currLength = 0;
-                    if ($groups[$i]->prevIsUnknown()) {
-                        $prevEnd = $groups[$i]->prev->end;
-                        if ($currPos < $prevEnd) {
-                            $dist = $cells[$prevEnd]->getDist($currPos);
-                            if ($groups[$i]->prev->prevIsFull())
-                                $currLength += min($dist, $groups[$i]->prev->length - 1);
-                            else
-                                $currLength += min($dist, $groups[$i]->prev->length);
-                        }
-                    }
-
-                    //к ней прибавляем длину текущей группы
-                    $currLength += $groups[$i]->length;
-
-                    //далее прибавляем длину следующей группы
-                    if ($groups[$i]->nextIsUnknown()) {
-                        if ($groups[$i]->next->nextIsFull())
-                            $currLength += $groups[$i]->next->length - 1;
-                        else
-                            $currLength += $groups[$i]->next->length;
-                    }
-
-                    if ($currLength < $numbers[$currNum]->length) {
-                        $currPos = $this->cells->getFullBegPos($currPos, $numbers[$currNum]->length, 'right');
-                        $currPos += $numbers[$currNum]->length + 1;
-                        $this->unsetGroupNumber($currNum);
-                        $currNum++;
-                    }
-
-                }while($oldCurrNum!=$currNum);
-
-                if ($i==$this->_ind)
-                    break;
-
-                $currPos = $this->cells->getFullBegPos($currPos, $numbers[$currNum]->length, 'right');
-                $currPos += $numbers[$currNum]->length + 1;
-                $this->unsetGroupNumber($currNum);
-                $currNum++;
-            }
-        }
-        echo $currPos.' ';
-    }
-
-    //удаляет возможные числа, большинство которых удаляется для групп, расположенных по середине
-    private function deleteGroupNumbersFromSideCell($side='left')
-    {
-        if ($side=='left')
-        {
-            $currPN = 0;
+            $rightDir = 'left';
+            $leftDir = 'right';
             
-            $groupsBeg = 0;
-            $groupsCond = function($i,$end){return $i<=$end;};
-            
-            $next = 1;
-            $nextIsEmpty = 'nextIsEmpty';
-
-            $setMaxPos = 'setMaxPos';
-
-            $start = 'start';
-        }
-        elseif ($side=='right')
-        {
-            $currPN = $this->numbers->count-1;
-            
-            $groupsBeg = $this->_groups->count-1;
-            $groupsCond = function($i,$end){return $i>=$end;};
-            
-            $next = -1;
-            $nextIsEmpty = 'prevIsEmpty';
+            $start = 'end';
 
             $setMaxPos = 'setMinPos';
+            $max = 'min';
 
-            $start = 'end';
+            $step = -1;
         }
-        
-        $list = $this->_groups;
-        $numbers = $this->numbers;
-        $numberLength = 0;
-        //обходим группы удаляя те номера, которые точно не принадлежат текущей группе
-        for($i=$groupsBeg; $groupsCond($i,$this->_ind); $i+=$next)
+
+        for ($i=$begNumber; $step*$i<$step*$ind; $i+=$step)
         {
-            if ($list[$i]->isEmpty())
-            {
-                //обнуляем остаток от числа
-                $numberLength = 0;
-            }
-            elseif ($list[$i]->isFull())
-            {
-                //определяем количество клеток в группе
-                $groupsLength = $list[$i]->length;
-                
-                //определяем следующее число, если остаток от предыдущего числа не остался
-                if ($numberLength==0)
-                    $numberLength = $numbers[$currPN]->length;
+            if (!$groups[$i]->isFull())
+                continue;
 
-                //пока количество клеток в группе больше текущего числа
-                while ($numberLength<$groupsLength)
-                {
-                    //считаем, что текущее число лежит левее от текущей группы
-                    $this->numbers[$currPN]->$setMaxPos($list[$i]->$start-2*$next);
-                    $this->unsetGroupNumber($currPN);
-                    $currPN+=$next;
-                    
-                    //получаем следующее число для проверки
-                    $numberLength = $numbers[$currPN]->length;
+            while (true) {
+
+                $currLength = $numbers[$currNum]->length;
+                //если текущее число меньше длины текущей группы
+                if ($currLength<$groups[$i]->length) {
+                    //удаляем число в текущем объекте группы
+                    $this->numbers[$currNum]->setPos($max,$groups[$i]->$start-2*$step);
+                    $this->unsetGroupNumber($currNum);
+                    $currNum+=$step;
                 }
-
-                if ($i==$this->_ind)
-                    break;
-                
-                //если текущее число равно количеству клеток в группе
-                if ($numberLength==$groupsLength)
-                {
-                    //считаем, что текущее число соответствует текущей группе
-                    $this->unsetGroupNumber($currPN);
-                    $currPN+=$next;
-
-                    $numberLength = 0;
+                //иначе
+                else {
+                    //определяем начальную координату текущей группы
+                    $groupStart = $groups[$i]->$start;
                     
-                    //переходим к следующей группе
-                    continue;
-                }
-                //если текущее число больше количеству клеток в группе
-                if ($numberLength>$groupsLength)
-                    //получаем остаток от числа вычитая количество клеток в группе
-                    $numberLength -= $groupsLength;
+                    //определяем какая длина может поместиться, начиная с этой координаты
+                    $fullLength = $cells->getFullLength($groupStart, $currLength, $rightDir);
 
-            }
-            elseif ($list[$i]->isUnknown())
-            {
-                //если остаток от числа остался
-                if ($numberLength>0)
-                {
-                    //определяем количество незаполненных клеток в группе
-                    $groupsLength = $list[$i]->length;
-                    
-                    //получаем остаток от числа вычитая количество клеток в группе
-                    $numberLength -= $groupsLength;
-                    
-                    //если от остатка ничего неосталось
-                    if ($numberLength<=0)
-                    {
-                        //считаем, что следующее число соответствует следующей группе
-                        $this->unsetGroupNumber($currPN);
-                        $currPN+=$next;
-                        
-                        $numberLength = 0;
-                    }
-                        
+                    $begPos = $groups[$i]->$start + $step * ($fullLength - 1);
+                    $i = $cells[$begPos]->group->ind;
+
+                    if ($fullLength < $currLength) {
+                        $fullLength = $cells->getFullLength($begPos, $currLength, $leftDir);
+                        while ($fullLength < $currLength AND !$cells[$begPos]->isFull()) {
+                            $begPos -= $step;
+                            $fullLength = $cells->getFullLength($begPos, $currLength, $leftDir);
+                        }
+
+                        if ($fullLength < $currLength) {
+                            $this->numbers[$currNum]->setPos($max,$groups[$i]->$start - 2 * $step);
+                            $this->unsetGroupNumber($currNum);
+                            $currNum += $step;
+                        } else
+                            break;
+                    } else
+                        break;
                 }
             }
+
+            if ($step*$i>=$step*$this->_ind)
+                break;
+
+            $this->unsetGroupNumber($currNum);
+            $currNum+=$step;
         }
     }
 }

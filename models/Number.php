@@ -98,60 +98,70 @@ class Number extends BaseObject
         $cells = $this->cells;
 
         $resMinPos = 0;
-        $prevName = 'prev';
-        $next = 1;
+        $prev = 'prev';
+        $step = 1;
         $direction = 'right';
 
         if ($type=='max')
         {
             $resMinPos = $cells->count-1;
-            $prevName = 'next';
-            $next = -1;
+            $prev = 'next';
+            $step = -1;
             $direction = 'left';
         }
 
-        if ($this->$prevName!==null)
-            $resMinPos = $this->$prevName->getPos($type) + $next * ($this->$prevName->length + 1);
+        if ($this->$prev!==null)
+            $resMinPos = $this->$prev->getPos($type) + $step * ($this->$prev->length + 1);
 
         return $this->$minPos = $cells->getFullBegPos($resMinPos, $this->_length, $direction);
     }
 
-    public function setMinPos($pos)
+    public function setPos($type,int $pos)
     {
-        if ($this->_minPos===null)
-            $this->_minPos = $this->getPos('min');
-
-        if ($this->_minPos<$pos)
+        $k=1;
+        $_minPos = '_minPos';
+        $end = 'end';
+        $cellsBegPos = 0;
+        $maxMinPos = $this->cells->count-$this->_length;    //максимально-левая позиция
+        $_next = '_next';
+        $direction = 'right';
+        if ($type=='max')
         {
-            $this->_minPos = ($pos<0)?0:$pos;
+            $k=-1;
+            $_minPos = '_maxPos';
+            $end = 'start';
+            $cellsBegPos = $this->cells->count-1;
+            $maxMinPos = $this->_length-1;                  //минимально-правая позиция
+            $_next = '_prev';
+            $direction = 'left';
+        }
+        
+        //если позиция не определена
+        if ($this->$_minPos===null)
+            //определяем её
+            $this->$_minPos = $this->getPos($type);
+
+        //если позиция, на которую мы хотим поменять текущую, находится правее текущей
+        if ($k*$this->$_minPos<$k*$pos)
+        {
+            //меняем её
+            $pos = $this->cells->getFullBegPos($pos, $this->_length, $direction);
+            $this->$_minPos = ($k*$pos<$k*$cellsBegPos)?$cellsBegPos:$pos;
             $this->line->isChange = true;
         }
 
-        if ($this->_minPos>$this->cells->count-$this->_length)
-            $this->_minPos = $this->cells->count-$this->_length;
+        //если левая позиция($this->$_minPos) больше максимально-левой позиции($maxMinPos)
+        if ($k*$this->$_minPos>$k*$maxMinPos)
+            //меняем её
+            $this->$_minPos = $maxMinPos;
 
         //смещаем позицию левой границы вправо если она находится там, где крестик
-        if ($this->cells[$this->_minPos]->isEmpty())
-            $this->setMinPos($this->cells[$this->_minPos]->group->end+1);
-    }
-
-    public function setMaxPos($pos)
-    {
-        if ($this->_maxPos===null)
-            $this->_maxPos = $this->getPos('max');
-
-        if ($this->_maxPos>$pos)
-        {
-            $this->_maxPos = ($pos>$this->cells->count-1)?$this->cells->count-1:$pos;
-            $this->line->isChange = true;
-        }
-
-        if ($this->_maxPos<$this->_length-1)
-            $this->_maxPos = $this->_length-1;
-
-        //смещаем позицию правой границы влево если она находится там, где крестик
-        if ($this->cells[$this->_maxPos]->isEmpty())
-            $this->setMaxPos($this->cells[$this->_maxPos]->group->start-1);
+        if ($this->cells[$this->$_minPos]->isEmpty())
+            $this->setPos($type,$this->cells[$this->$_minPos]->group->$end+$k);
+        
+        //меняем границу для следующего числа
+        if ($this->$_next!==null AND $k*$this->$_next->getPos($type)<$k*($this->$_minPos+$k*($this->_length+1)))
+            $this->$_next->setPos($type,$this->$_minPos+$k*($this->_length+1));
     }
 
     public function setBound()
@@ -160,14 +170,10 @@ class Number extends BaseObject
         $beg = 0;
         if ($this->_prev!==null)
             $beg = ($this->_prev->getPos('max')<$this->getPos('min'))?$this->getPos('min'):$this->_prev->getPos('max')+1;
-        else
-            $this->getPos('min');
 
         $end = $this->cells->count-1;
         if ($this->_next!==null)
             $end = ($this->getPos('max')<$this->_next->getPos('min'))?$this->getPos('max'):$this->_next->getPos('min')-1;
-        else
-            $this->getPos('max');
 
         $fullMinPos = $fullMaxPos = null;
         //пытаемся на этой границе найти закрашенные клетки
@@ -185,11 +191,17 @@ class Number extends BaseObject
         if ($fullMinPos!==null)
         {
             //уменьшаем возможную границу
-            $this->setMinPos($fullMaxPos-$this->_length+1);
-            $this->setMaxPos($fullMinPos+$this->_length-1);
+            $this->setPos('min',$fullMaxPos-$this->_length+1);
+            $this->setPos('max',$fullMinPos+$this->_length-1);
         }
     }
-	
+    
+    public function clearBound()
+    {
+        $this->_minPos = null;
+        $this->_maxPos = null;
+    }
+    
     //определяет границы, где точно находятся разукрашенные клетки
     private function getRealBound(): ?array
     {

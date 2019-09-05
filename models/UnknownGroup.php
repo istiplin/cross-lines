@@ -59,4 +59,51 @@ class UnknownGroup extends EmptyGroup
         //иначе считаем, что текущая группа может быть полностью закрашена, т.е. крестика тут может не быть
         return $this->_hasEmpty = false;
     }
+    
+    private function getFullGroup($type): ?FullGroup
+    {
+        $prevFullGroup = null;
+        $prev = $this->$type;
+        while ($prev)
+        {
+            if ($prev->isFull())
+            {
+                $prevFullGroup = $prev;
+                break;
+            }
+            $prev = $prev->$type;
+        }
+        
+        return $prevFullGroup;
+    }
+    
+    public function setEmptyCells()
+    {
+        if ($this->prevIsEmpty() AND $this->nextIsEmpty())
+        {
+            $minLength = $this->cells->count;
+            $begKey = 0;
+            $endKey = $this->numbers->count-1;
+            
+            if ($prevFullGroup = $this->getFullGroup('prev'))
+            {
+                $groupNumbers = $prevFullGroup->groupNumbers;
+                reset($groupNumbers);
+                $begKey = key($groupNumbers)+1;
+            }
+            
+            if ($nextFullGroup = $this->getFullGroup('next'))
+            {
+                $groupNumbers = $nextFullGroup->groupNumbers;
+                end($groupNumbers);
+                $endKey = key($groupNumbers)-1;
+            }
+            for($key=$begKey; $key<=$endKey; $key++)
+                $minLength = min($minLength,$this->numbers[$key]->length);
+            
+            if ($this->_length<$minLength)
+                for ($pos=$this->_start; $pos<=$this->_end; $pos++)
+                    $this->cells[$pos]->setEmpty();
+        }
+    }
 }

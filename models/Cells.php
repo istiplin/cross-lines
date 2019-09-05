@@ -14,44 +14,146 @@ class Cells extends BaseObject implements \ArrayAccess
     private $_count=0;
     private $_unknownCount;
 
-    public function __construct($data,$line)
+    public function __construct($line,$data)
     {
         $this->_line = $line;
         $this->setList($data);
     }
 
+    private function getCell($state,$ind)
+    {
+        if ($this->_line->field!==null)
+            $cell = $this->_line->field->getCell($state,$ind,$this->_line);
+        else
+            $cell = new Cell($state);
+        
+        return $cell;
+    }
+    
     private function setList($data)
     {
         $this->_unknownCount=0;
         $elem = null;
         for($i=0; $i<strlen($data); $i++)
         {	
-            $state = (int)$data[$i];
-            $elem = new Cell($this,$state,$i,$elem);
+            $state = $data[$i];
+            $elem = $this->getCell($state,$i);
             $this->_list[$i] = $elem;
             $this->_count++;
             if ($elem->isUnknown())
                 $this->_unknownCount++;
         }
     }
+    
+    public function changeAttrs()
+    {
+        $count = count($this->_list);
+        $prevCell = null;
+        for($i=0; $i<$count; $i++)
+        {
+            $cell = $this->_list[$i];
+            $cell->cells = $this;
+            $cell->ind = $i;
+            $cell->prev = $prevCell;
+            $prevCell = $cell;
+        }
+        $prevCell->next=null;
+    }
+
+    //возвращает итоговую длину возможной закрашенной группы,
+    //начиная с позиции $fullBegPos, пытаясь пройти  расстояние длиной $fullLength
+    //в направлении $direction
+    public function getFullLength($fullBegPos, $fullLength, $direction): int
+    {
+        if ($fullLength==0)
+            throw new \Exception('$fullLength is 0');
+
+        if ($this[$fullBegPos]->isEmpty())
+            throw new \Exception('$fullBegPos is empty');
+
+        $resFullLength = 0;
+        $currPos = $fullBegPos;
+
+        $groupStart = 'groupStart';
+        $groupEnd = 'groupEnd';
+        $nextGroupIsEmpty = 'nextGroupIsEmpty';
+        $next = 'next';
+        $step = 1;
+        if ($direction == 'left')
+        {
+            $groupStart = 'groupEnd';
+            $groupEnd = 'groupStart';
+            $nextGroupIsEmpty = 'prevGroupIsEmpty';
+            $next = 'prev';
+            $step = -1;
+        }
+
+        if ($this[$currPos]->isFull())
+        {
+            if ($currPos !== $this[$currPos]->$groupStart)
+                throw new \Exception("currPos=$currPos is not $groupStart = {$this[$currPos]->$groupStart} (fullBegPos=$fullBegPos, fullLength=$fullLength, $direction)");
+            if ($fullLength < $this[$currPos]->groupLength)
+                return 0;
+            if ($fullLength == $this[$currPos]->groupLength)
+                return $fullLength;
+        }
+
+        while(true) {
+
+            if ($this[$currPos]->isFull()) {
+                $resFullLength += ($step*($this[$currPos]->$groupEnd - $currPos) + 1);
+            }
+            elseif ($this[$currPos]->isUnknown()) {
+                $resFullLength += ($step*($this[$currPos]->$groupEnd - $currPos) + 1);
+                if ($resFullLength > $fullLength)
+                    return $fullLength;
+                if ($this[$currPos]->$nextGroupIsEmpty)
+                    return $resFullLength;
+                if ($resFullLength == $fullLength)
+                    return $resFullLength - 1;
+
+                $nextLength = $this[$currPos]->group->$next->length;
+                if ($fullLength < $resFullLength + $nextLength)
+                    return $resFullLength - 1;
+
+            }
+            if ($this[$currPos]->$nextGroupIsEmpty)
+                break;
+            $currPos = $this[$currPos]->$groupEnd + $step;
+        }
+
+        return $resFullLength;
+    }
 
     //определяет позицию клетки, с которой начинается и может поместиться закрашенная группа длинной $fullLength
+    //при этом, чтобы длина сохранялась такой
     //начиная поиск с позиции $begPos в направлении $direction
-    public function getFullBegPos($begPos, $fullLength, $direction): int
+    public function getFullBegPos($fullBegPos, $fullLength, $direction): ?int
     {
         $next = 1;
         $groupStart = 'groupStart';
         $groupEnd = 'groupEnd';
         $nextGroupIsEmpty = 'nextGroupIsEmpty';
+        $prevIsFull = 'prevIsFull';
         if ($direction=='left')
         {
             $next = -1;
             $groupStart = 'groupEnd';
             $groupEnd = 'groupStart';
             $nextGroupIsEmpty = 'prevGroupIsEmpty';
+            $prevIsFull = 'nextIsFull';
         }
-
-        $fullBegPos = $currPos = $begPos;
+        
+        if (-1<$fullBegPos AND $fullBegPos<$this->_count)
+        {
+            if ($this[$fullBegPos]->isUnknown() AND $this[$fullBegPos]->$prevIsFull())
+            {
+                $fullBegPos+=$next;
+            }
+        }
+        
+        $fullBegPos = $currPos = $fullBegPos;
+        
         while(-1<$currPos AND $currPos<$this->_count)
         {
             //если текущая клетка - крестик
@@ -114,6 +216,7 @@ class Cells extends BaseObject implements \ArrayAccess
                 }
             }
         }
+        return null;
     }
 
     public function getNumbers(): Numbers

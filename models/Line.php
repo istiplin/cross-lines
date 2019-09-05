@@ -7,7 +7,11 @@ use \sys\BaseObject;
 class Line extends BaseObject
 {
     public $isChange = true;
-
+    
+    public $crossLines=null;
+    public $isHorizontal;
+    public $field;
+    
     private $_numbers;
     private $_cells;
     private $_groups;
@@ -15,18 +19,20 @@ class Line extends BaseObject
     private $_ind;
     private $_isMirror = false;
 
-    public function __construct($ind,$numbers,$cells,$isMirror=false)
+    public function __construct($ind,$numbers,string $cellsStr,bool $isHorizontal,$field,$isMirror=false)
     {
         $this->_ind = $ind;
-        if ($isMirror)
+        $this->_isMirror = $isMirror;
+        if ($this->_isMirror)
         {
-            $this->_isMirror = $isMirror;
             $numbers = array_reverse($numbers);
-            $cells = strrev($cells);
+            $cellsStr = strrev($cellsStr);
         }
-        $this->_cells = new Cells($cells,$this);
+        $this->isHorizontal = $isHorizontal;
+        $this->field = $field;
+
+        $this->_cells = new Cells($this,$cellsStr);
         $this->_numbers = new Numbers($numbers,$this);
-        $this->_groups = new Groups($this->_cells);
     }
     
     public function getInd(): int
@@ -38,7 +44,7 @@ class Line extends BaseObject
     {
         return $this->_numbers;
     }
-
+    
     public function getCells(): Cells
     {
         return $this->_cells;
@@ -55,21 +61,48 @@ class Line extends BaseObject
             $this->cells->setEmptyStates(0, $this->cells->count-1);
     }
     
-    public function resolve()
+    public function resolve($withView=false,$withDetail=false)
     {
-        //$this->groups->resolve();
-        //return;
+        $this->_cells->changeAttrs();
+        $this->_groups = new Groups($this->_cells);
+        
+        $this->_numbers->resetBounds();
+        
+        if ($withView)
+            $this->cells->view();
+        
+        if ($withDetail)
+            $this->numbers->printBounds();
         
         $this->setEmptyByNoNumbers();
         while ($this->isChange)
         {
             $this->isChange = false;
-            if ($this->cells->unknownCount==0)
-                break;
-            
-            $this->numbers->resolve();
-            $this->groups->resolve();
+
+            if ($this->cells->unknownCount>0) {
+                
+                $this->numbers->resolve();
+                
+                if ($withDetail)
+                {
+                    $this->cells->view();
+                    $this->numbers->printBounds();
+                }
+            }
+
+            if ($this->cells->unknownCount>0) {
+                if ($withDetail)
+                    $this->cells->view();
+                
+                $this->groups->resolve();
+                
+                if ($withDetail)
+                    $this->groups->view();
+            }
         }
+        
+        if ($withView)
+            $this->cells->view();
     }
     
     public function getCellsView()

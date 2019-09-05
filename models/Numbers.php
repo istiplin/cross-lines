@@ -22,11 +22,11 @@ class Numbers extends BaseObject implements \ArrayAccess
     private function setList($data)
     {
         $elem = null;
-        for($i=0; $i<count($data); $i++)
+        $this->_count = count($data);
+        for($i=0; $i<$this->_count; $i++)
         {	
             $elem = new Number($this,$data[$i],$i,$elem);
             $this->_list[$i] = $elem;
-            $this->_count++;
         }
     }
     
@@ -56,13 +56,16 @@ class Numbers extends BaseObject implements \ArrayAccess
     }
 
     //для каждого числа определяем возможные границы нахождения закрашенных клеток
-    public function setBounds()
+    public function resetBounds()
     {
         for($i=0; $i<$this->_count; $i++)
+            $this->_list[$i]->clearBound();
+        
+        for($i=0; $i<$this->_count; $i++)
             $this->_list[$i]->setBound();
-
-        //for($i=$this->_count-1; $i>=0; $i--)
-        //    $this->_list[$i]->setBound();
+        
+        for($i=$this->_count-1; $i>=0; $i--)
+            $this->_list[$i]->setBound();
     }
     
     //помечает клетки крестиками
@@ -82,14 +85,16 @@ class Numbers extends BaseObject implements \ArrayAccess
     
     public function resolve()
     {
-        $this->setBounds();
-        $this->setFullCellsByBounds();
-        $this->setEmptyCellsByBounds();
+        $this->line->isChange = true;
+        while ($this->line->isChange) {
+            $this->line->isChange = false;
+            $this->setFullCellsByBounds();
+            $this->setEmptyCellsByBounds();
+        }
     }
 
     public function printBounds()
     {
-        $this->setBounds();
         for($i=0; $i<$this->count; $i++)
             $this->list[$i]->printBound();
     }

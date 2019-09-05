@@ -12,7 +12,6 @@ class Groups extends BaseObject implements \ArrayAccess
     private $_cells;
     private $_list;
     private $_count=0;
-    private $_isDeletedGroupNumbers = false;
 
     public function __construct(Cells $cells)
     {
@@ -27,6 +26,8 @@ class Groups extends BaseObject implements \ArrayAccess
 
     public function getList(): array
     {
+        if ($this->_list===null)
+            $this->setList();
         return $this->_list;
     }
     
@@ -74,104 +75,68 @@ class Groups extends BaseObject implements \ArrayAccess
         }
         
     }
-    
+
     private function setGroupNumbers()
     {
         for($i=0; $i<$this->_count; $i++)
         {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->setGroupNumbers();
+            if ($this[$i]->isFull())
+                $this[$i]->setGroupNumbers();
         }
     }
     
     private function deleteGroupNumbers()
     {
         $this->setGroupNumbers();
-        
-        if ($this->_isDeletedGroupNumbers)
-            return;
 
         for($i=0; $i<$this->_count; $i++)
         {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->deleteGroupNumbers();
+            if ($this[$i]->isFull())
+                $this[$i]->deleteGroupNumbers();
         }
 
         $minInd = null;
         for($i=0; $i<$this->_count; $i++)
         {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->deleteGroupNumbersOnBound($minInd,'min');
+            if ($this[$i]->isFull())
+                $this[$i]->deleteGroupNumbersOnBound($minInd,'min');
         }
 
         $maxInd = null;
         for($i=$this->_count-1; $i>-1; $i--)
         {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->deleteGroupNumbersOnBound($maxInd,'max');
+            if ($this[$i]->isFull())
+                $this[$i]->deleteGroupNumbersOnBound($maxInd,'max');
         }
-
-        $this->_isDeletedGroupNumbers = true;
     }
 
     private function setEmptyCells()
     {
         for($i=0; $i<$this->_count; $i++)
-        {
-            if (!$this->_list[$i]->isFull())
-                continue;
             $this->_list[$i]->setEmptyCells();
-        }
     }
 
     private function setFullCells()
     {
         for($i=0; $i<$this->_count; $i++)
         {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->setFullCells();
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->setFullCells();
         }
     }
 
     public function resolve()
     {
         $this->_list = null;
-        $this->setList();
         $this->deleteGroupNumbers();
 
         $this->setFullCells();
         $this->setEmptyCells();
-
-
-        $this->_isDeletedGroupNumbers = false;
     }
 
     public function view()
     {
-        //$this->setList();
-        //$this->deleteGroupNumbers();
         for($i=0; $i<$this->count; $i++)
-            echo $this->list[$i]->getView(2);
-    }
-
-    public function deleteGroupNumbersFromSideCell2($side='left')
-    {
-        for($i=0; $i<$this->_count; $i++)
-        {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->setGroupNumbers($this->numbers->list);
-        }
-        for($i=0; $i<$this->_count; $i++)
-        {
-            if (!$this->_list[$i]->isFull())
-                continue;
-            $this->_list[$i]->deleteGroupNumbersFromSideCell2();
-        }
+            echo $this[$i]->getView(2);
     }
 }
