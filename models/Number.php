@@ -3,56 +3,54 @@ namespace models;
 
 use \sys\BaseObject;
 
-//класс для работы с числами, характеризующие длину разукрашенного сегмента в поле, состоящего из клеток
+//класс для работы с числом, характеризующий количество разукрашенных соседних клеток в строке
 class Number extends BaseObject
 {
-    private $_numbers;
+	private $_numbers;
+	private $_line;
+	public $cells;
         
-    private $_minPos;	//минимально возможная координата положения начала сегмента
-    private $_maxPos;	//максимально возможная координата положения конца сегмента
+	private $_length;		//показывает сколько должно быть разукрашено клеток подряд в строке
+		
+    private $_minPos;				//минимально возможная координата, где начинается разукрашенная клетка
+    private $_maxPos;				//максимально возможная координата, где заканчивается разукрашенная клетка
+	private $_isResolve = false;	//показывает полностью ли закрашен блок, соответствующий этому числу
 
-    private $_length;		//длина закрашенной группы на рисунке
-    private $_ind;			//номер индекса
-    private $_prev;
-    private $_next;
+    private $_ind;			//номер числа
+    private $_prev;			//указатель на предыдущее число
+    private $_next;			//указатель на следующее число
 
     private $_isOneGroup = false;   //число соответствует одной разукрашенной групее
 
     public function __construct($numbers,$length,$ind,$prev=null)
     {
-        $this->_numbers = $numbers;
-        $this->_length = $length;
+		$this->_numbers = $numbers;
+		$this->_line = $numbers->getLine();
+		
+		$this->_length = $length;
+		
         $this->_ind = $ind;
 
         if ($prev!==null)
         {
-            //устанавливаем ссылку на предыдущий отрезок
-            $this->prev = $prev;
+            //устанавливаем ссылку на предыдущий объект текущего класса
+            $this->setPrev($prev);
 
-            //в предыдущем отрезке устанавливаем ссылку на текущий отрезок
-            $this->prev->next = $this;
+            //в предыдущем объекте текущего класса устанавливаем ссылку на текущий объект
+            $this->getPrev()->setNext($this);
         }
     }
+	/*
+	public function setCells($value)
+	{
+		$this->_cells = $value;
+	}
+	*/
 	
-    public function getLine(): Line
-    {
-        return $this->_numbers->line;
-    }
-
-    public function getCells(): Cells
-    {
-        return $this->_numbers->line->cells;
-    }
-
-    public function getNumbers(): Numbers
-    {
-        return $this->_numbers;
-    }
-        
-    public function getLength():int
-    {
-        return $this->_length;
-    }
+	public function getLength()
+	{
+		return $this->_length;
+	}
 
     public function getInd(): int
     {
@@ -111,7 +109,7 @@ class Number extends BaseObject
         }
 
         if ($this->$prev!==null)
-            $resMinPos = $this->$prev->getPos($type) + $step * ($this->$prev->length + 1);
+            $resMinPos = $this->$prev->getPos($type) + $step * ($this->$prev->_length + 1);
 
         return $this->$minPos = $cells->getFullBegPos($resMinPos, $this->_length, $direction);
     }
@@ -147,7 +145,7 @@ class Number extends BaseObject
             //меняем её
             $pos = $this->cells->getFullBegPos($pos, $this->_length, $direction);
             $this->$_minPos = ($k*$pos<$k*$cellsBegPos)?$cellsBegPos:$pos;
-            $this->line->isChange = true;
+            $this->_line->isChange = true;
         }
 
         //если левая позиция($this->$_minPos) больше максимально-левой позиции($maxMinPos)
@@ -166,6 +164,9 @@ class Number extends BaseObject
 
     public function setBound()
     {
+		if ($this->_isResolve)
+			return;
+			
         //определяем границу клеток в которых возможно наличие разукрашенных клеток, соответствующие только одному текущему числу
         $beg = 0;
         if ($this->_prev!==null)
@@ -175,6 +176,9 @@ class Number extends BaseObject
         if ($this->_next!==null)
             $end = ($this->getPos('max')<$this->_next->getPos('min'))?$this->getPos('max'):$this->_next->getPos('min')-1;
 
+		if ($end - $beg + 1 == $this->_length)
+			return;
+			
         $fullMinPos = $fullMaxPos = null;
         //пытаемся на этой границе найти закрашенные клетки
         for ($pos = $beg; $pos<=$end; $pos++)
@@ -195,13 +199,7 @@ class Number extends BaseObject
             $this->setPos('max',$fullMinPos+$this->_length-1);
         }
     }
-    
-    public function clearBound()
-    {
-        $this->_minPos = null;
-        $this->_maxPos = null;
-    }
-    
+
     //определяет границы, где точно находятся разукрашенные клетки
     private function getRealBound(): ?array
     {
@@ -219,11 +217,17 @@ class Number extends BaseObject
     //закрашивает клетки по числу основываясь на максимально и минимально возможном положении закрашенной группы
     public function setFullCellsByBound()
     {
+		if ($this->_isResolve)
+			return;
+			
         $realBound = $this->getRealBound();
         if ($realBound===null)
             return;
 
         $this->cells->setFullStates($realBound['min'],$realBound['max']);
+		
+		if ($this->_maxPos - $this->_minPos + 1 == $this->_length)
+			$this->_isResolve = true;
     }
 
     //заполняет клетки крестиком по максимально-возможному положению предыдущего номера и

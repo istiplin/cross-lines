@@ -4,12 +4,13 @@ namespace models;
 use \sys\BaseObject;
 use \sys\TArrayAccess;
 
-//класс для работы с клетками, по которым строится рисунок
+//класс для работы с числами в строке, по которым строится рисунок
 class Numbers extends BaseObject implements \ArrayAccess
 {
     use TArrayAccess;
     
     private $_line;
+	private $_cells;
     private $_list;
     private $_count=0;
     
@@ -30,14 +31,21 @@ class Numbers extends BaseObject implements \ArrayAccess
         }
     }
     
+	public function setCells($value)
+	{
+		$this->cells = $value;
+		for ($i=0; $i<$this->_count; $i++)
+			$this->_list[$i]->cells = $value;
+	}
+	
+	public function getLine(): Line
+	{
+		return $this->_line;
+	}
+	
     public function getList(): array
     {
         return $this->_list;
-    }
-    
-    public function getLine()
-    {
-        return $this->_line;
     }
     
     public function getCount(): int
@@ -56,11 +64,8 @@ class Numbers extends BaseObject implements \ArrayAccess
     }
 
     //для каждого числа определяем возможные границы нахождения закрашенных клеток
-    public function resetBounds()
+    public function setBounds()
     {
-        for($i=0; $i<$this->_count; $i++)
-            $this->_list[$i]->clearBound();
-        
         for($i=0; $i<$this->_count; $i++)
             $this->_list[$i]->setBound();
         
@@ -85,9 +90,9 @@ class Numbers extends BaseObject implements \ArrayAccess
     
     public function resolve()
     {
-        $this->line->isChange = true;
-        while ($this->line->isChange) {
-            $this->line->isChange = false;
+        $this->_line->isChange = true;
+        while ($this->_line->isChange) {
+            $this->_line->isChange = false;
             $this->setFullCellsByBounds();
             $this->setEmptyCellsByBounds();
         }
@@ -95,13 +100,13 @@ class Numbers extends BaseObject implements \ArrayAccess
 
     public function printBounds()
     {
-        for($i=0; $i<$this->count; $i++)
-            $this->list[$i]->printBound();
+        for($i=0; $i<$this->_count; $i++)
+            $this->_list[$i]->printBound();
     }
     
     public function view()
     {
         for ($i=0; $i<$this->_count; $i++)
-            echo $this->list[$i]->length.'|';
+            echo $this->_list[$i]->length.'|';
     }
 }

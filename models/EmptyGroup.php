@@ -15,7 +15,6 @@ class EmptyGroup extends BaseObject
     protected $_ind;
 
     protected $_prev;
-    
     protected $_next;
 
     public static function initial($groups,string $state,$start,$ind,$prev=null)
@@ -38,10 +37,10 @@ class EmptyGroup extends BaseObject
         if ($prev!==null)
         {
             //устанавливаем ссылку на предыдую группу
-            $this->prev = $prev;
+            $this->setPrev($prev);
 
             //в предыдущей группе устанавливаем ссылку на текущую группу
-            $this->prev->next = $this;
+            $this->getPrev()->setNext($this);
         }
     }
 

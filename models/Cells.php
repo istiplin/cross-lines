@@ -10,54 +10,81 @@ class Cells extends BaseObject implements \ArrayAccess
     use TArrayAccess;
     
     private $_line;
-    private $_list;
+	private $_field;
+	
+    private $_list=[];
     private $_count=0;
     private $_unknownCount;
+	
+	private $_groups;
 
-    public function __construct($line,$data)
+    public function __construct($data,$line)
     {
         $this->_line = $line;
+		$this->_field = $line->getField();
+		
         $this->setList($data);
+		$this->_groups = new Groups($this);
     }
 
-    private function getCell($state,$ind)
+	public function getLine(): Line
+	{
+		return $this->_line;
+	}
+	
+	public function getField(): Field
+	{
+		return $this->_field;
+	}
+	
+	public function getGroups(): Groups
+	{
+		return $this->_groups;
+	}
+	
+    private function getElem($state,$ind)
     {
-        if ($this->_line->field!==null)
-            $cell = $this->_line->field->getCell($state,$ind,$this->_line);
-        else
-            $cell = new Cell($state);
-        
-        return $cell;
+        if ($this->_field!==null)
+            return $this->_field->getCell($state,$ind,$this->_line);
+			
+		//для юнит-тестов
+		elseif ($this->_line->isHorizontal)
+			return new Cell($state,$ind,$this->_line->ind);
+		//для юнит-тестов
+		else
+			return new Cell($state,$this->_line->ind,$ind);
     }
     
     private function setList($data)
     {
         $this->_unknownCount=0;
-        $elem = null;
+		$prevElem = null;
         for($i=0; $i<strlen($data); $i++)
-        {	
-            $state = $data[$i];
-            $elem = $this->getCell($state,$i);
-            $this->_list[$i] = $elem;
-            $this->_count++;
-            if ($elem->isUnknown())
-                $this->_unknownCount++;
-        }
+		{
+            $elem = $this->getElem($data[$i],$i);
+			
+			$elem->setCells($this);
+			$elem->setPrev($prevElem);
+			$prevElem = $elem;
+			
+			$this->_list[$i] = $elem;
+			$this->_count++;
+			if ($elem->isUnknown())
+				$this->_unknownCount++;
+		}
+		$prevElem->setNext(null);
     }
     
     public function changeAttrs()
     {
-        $count = count($this->_list);
         $prevCell = null;
-        for($i=0; $i<$count; $i++)
+        for($i=0; $i<$this->_count; $i++)
         {
             $cell = $this->_list[$i];
-            $cell->cells = $this;
-            $cell->ind = $i;
-            $cell->prev = $prevCell;
-            $prevCell = $cell;
+            //$cell->setPrev($prevCell);
+            //$prevCell = $cell;
         }
-        $prevCell->next=null;
+        //$prevCell->next=null;
     }
 
     //возвращает итоговую длину возможной закрашенной группы,
@@ -125,10 +152,9 @@ class Cells extends BaseObject implements \ArrayAccess
         return $resFullLength;
     }
 
-    //определяет позицию клетки, с которой начинается и может поместиться закрашенная группа длинной $fullLength
-    //при этом, чтобы длина сохранялась такой
-    //начиная поиск с позиции $begPos в направлении $direction
-    public function getFullBegPos($fullBegPos, $fullLength, $direction): ?int
+    //определяет позицию клетки, с которой начинается и может поместиться закрашенный блок длинной $fullLength,
+    //начиная поиск с позиции $fullBegPos в направлении $direction
+    public function getFullBegPos($fullBegPos, $fullLength, $direction): int
     {
         $next = 1;
         $groupStart = 'groupStart';
@@ -152,7 +178,7 @@ class Cells extends BaseObject implements \ArrayAccess
             }
         }
         
-        $fullBegPos = $currPos = $fullBegPos;
+        $currPos = $fullBegPos;
         
         while(-1<$currPos AND $currPos<$this->_count)
         {
@@ -216,7 +242,7 @@ class Cells extends BaseObject implements \ArrayAccess
                 }
             }
         }
-        return null;
+		throw new \Exception('Error! method '.__METHOD__.' return is null');
     }
 
     public function getNumbers(): Numbers
@@ -233,19 +259,14 @@ class Cells extends BaseObject implements \ArrayAccess
     {
         $this->_unknownCount--;
         if ($this->_unknownCount<0)
-            throw new \Exception(' error line:'.$this->line->ind.' pos:'.$pos.'. this->unknownCount is bellow zero');
+            throw new \Exception(' error line:'.$this->_line->ind.' pos:'.$pos.'. this->unknownCount is bellow zero');
     }
     
     public function getList(): array
     {
         return $this->_list;
     }
-    
-    public function getLine()
-    {
-        return $this->_line;
-    }
-    
+	
     public function getCount(): int
     {
         return $this->_count;

@@ -16,12 +16,6 @@ class Groups extends BaseObject implements \ArrayAccess
     public function __construct(Cells $cells)
     {
         $this->_cells = $cells;
-        $this->setList();
-    }
-
-    public function getCells(): Cells
-    {
-        return $this->_cells;
     }
 
     public function getList(): array
@@ -31,16 +25,22 @@ class Groups extends BaseObject implements \ArrayAccess
         return $this->_list;
     }
     
-    public function getNumbers(): Numbers
-    {
-        return $this->_cells->line->numbers;
-    }
+	public function getCells(): Cells
+	{
+		return $this->_cells;
+	}
 
     public function getCount(): int
     {
         return $this->_count;
     }
 
+	public function resetList()
+	{
+		$this->_list=null;
+		$this->setList();
+	}
+	
     private function setList()
     {
         if ($this->_list!==null)
@@ -66,10 +66,10 @@ class Groups extends BaseObject implements \ArrayAccess
             }
 
             //в текущей клетке делаем ссылку на текущую группу
-            $cells[$i]->group = $group;
+            $cells[$i]->setGroup($group);
 
             //если текущая клетка последняя или следующее состояние клетки другое
-            if ($cells[$i]->next===null OR $currState!==$cells[$i]->next->state)
+            if ($cells[$i]->getNext()===null OR $currState!==$cells[$i]->getNext()->getState())
                 //текущей группе задаем последнюю позицию текущей клетки
                 $group->end = $i;
         }
