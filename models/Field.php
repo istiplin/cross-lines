@@ -4,7 +4,7 @@ namespace models;
 use \sys\BaseObject;
 
 //класс для работы с одной из линий японского кроссворда
-class Field// extends BaseObject
+class Field extends BaseObject
 {
     public $name;
     public $duration;
