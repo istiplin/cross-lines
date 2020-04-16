@@ -22,30 +22,25 @@ class Number extends BaseObject
 
     private $_isOneGroup = false;   //число соответствует одной разукрашенной групее
 
-    public function __construct($numbers,$length,$ind,$prev=null)
+    public function __construct(Numbers $numbers,$length,$ind,$prev=null)
     {
-		$this->_numbers = $numbers;
-		$this->_line = $numbers->getLine();
+		$this->init($numbers,$prev);
 		
 		$this->_length = $length;
-		
         $this->_ind = $ind;
-
-        if ($prev!==null)
-        {
-            //устанавливаем ссылку на предыдущий объект текущего класса
-            $this->setPrev($prev);
-
-            //в предыдущем объекте текущего класса устанавливаем ссылку на текущий объект
-            $this->getPrev()->setNext($this);
-        }
     }
-	/*
-	public function setCells($value)
+	
+	public function init(Numbers $numbers,$prev)
 	{
-		$this->_cells = $value;
+		$this->setNumbers($numbers);
+		$this->setPrev($prev);
 	}
-	*/
+	
+	public function setNumbers(Numbers $value)
+	{
+		$this->_numbers = $value;
+		$this->_line = $value->getLine();
+	}
 	
 	public function getLength()
 	{
@@ -69,7 +64,12 @@ class Number extends BaseObject
 
     public function setPrev($prev)
     {
-        $this->_prev = $prev;
+		//устанавливаем ссылку на предыдущий объект текущего класса
+		$this->_prev = $prev;
+		
+		if ($prev!==null)
+			//в предыдущем объекте текущего класса устанавливаем ссылку на текущий объект
+			$prev->setNext($this);
     }
 
     public function setNext($next)
@@ -145,7 +145,8 @@ class Number extends BaseObject
             //меняем её
             $pos = $this->cells->getFullBegPos($pos, $this->_length, $direction);
             $this->$_minPos = ($k*$pos<$k*$cellsBegPos)?$cellsBegPos:$pos;
-            $this->_line->isChange = true;
+            //$this->_line->isChange = true;
+            $this->_line->isChangeByNumbers = true;
         }
 
         //если левая позиция($this->$_minPos) больше максимально-левой позиции($maxMinPos)
@@ -162,6 +163,12 @@ class Number extends BaseObject
             $this->$_next->setPos($type,$this->$_minPos+$k*($this->_length+1));
     }
 
+	public function clearBound()
+	{
+		$this->_maxPos = null;
+		$this->_minPos = null;
+	}
+	
     public function setBound()
     {
 		if ($this->_isResolve)
@@ -205,6 +212,7 @@ class Number extends BaseObject
     {
         $minPos = $this->getPos('min');
         $maxPos = $this->getPos('max');
+		
         if (($maxPos-$minPos+1)>=(2*$this->_length))
             return null;
 

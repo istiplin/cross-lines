@@ -15,6 +15,9 @@ class Test extends \Codeception\Test\Unit
         {
             if (array_key_exists(2, $resolve))
             {
+				$resolve[1] = str_replace(' ','',$resolve[1]);
+				$resolve[2] = str_replace(' ','',$resolve[2]);
+				
                 $this->checkResolveLine($key,$resolve[0],$resolve[1],false,$resolve[2]);
                 $this->checkResolveLine($key,$resolve[0],$resolve[1],true,$resolve[2]);
             }
@@ -23,13 +26,16 @@ class Test extends \Codeception\Test\Unit
 	
     private function checkResolveLine($ind,$numbers,$cellsStr,$isMirror,$result)
     {
-        $model = new Line($ind,$numbers,$cellsStr,true,null,$isMirror);
-        $model->resolve($cellsStr);
-        $newCells = $model->cellsView;
-        $message = 'message: '.$ind.' '.$cellsStr.'->'.$newCells;
-        $begMess = '';
-        if ($isMirror)
-            $begMess = 'MIRROR';
-        expect($begMess.' '.$message,$newCells)->equals($result);
+        $model = new Line($ind,$numbers,$cellsStr,false,null,$isMirror);
+        if ($model->resolveTest($cellsStr))
+			$newCells = $model->getCellsView();
+		else
+			$newCells = 'error';
+			
+		$begMess = '';
+		$message = 'message: '.$ind.' '.$cellsStr.'->'.$newCells;
+		if ($isMirror)
+			$begMess = 'MIRROR';
+		expect($begMess.' '.$message,$newCells)->equals($result);
     }
 }

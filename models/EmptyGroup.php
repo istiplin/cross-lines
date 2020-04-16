@@ -7,7 +7,10 @@ use \sys\BaseObject;
 class EmptyGroup extends BaseObject
 {
     protected $_state = Cell::EMPTY_STATE;
+	
     protected $_groups;
+	protected $_cells;
+	protected $_line;
 
     protected $_start;
     protected $_length;
@@ -30,20 +33,19 @@ class EmptyGroup extends BaseObject
 
     public function __construct($groups,$start,$ind,$prev=null)
     {
-        $this->_groups = $groups;
+		$this->setPrev($prev);
+		$this->setGroups($groups);
         $this->_start = $start;
         $this->_ind = $ind;
-
-        if ($prev!==null)
-        {
-            //устанавливаем ссылку на предыдую группу
-            $this->setPrev($prev);
-
-            //в предыдущей группе устанавливаем ссылку на текущую группу
-            $this->getPrev()->setNext($this);
-        }
     }
 
+	public function setGroups(Groups $value)
+	{
+		$this->_groups = $value;
+		$this->_cells = $value->getCells();
+		$this->_line = $value->getLine();
+	}
+	
     public function getStart(): int
     {
         return $this->_start;
@@ -52,7 +54,7 @@ class EmptyGroup extends BaseObject
     public function setEnd(int $value)
     {
         if ($this->_end!==null)
-            throw new \Exception('$this->_end is not null');
+            throw new \Exception('Error! '.__METHOD__.' $this->_end is not null');
         $this->_end = $value;
         $this->_length = $this->_end - $this->_start + 1;
     }
@@ -79,14 +81,21 @@ class EmptyGroup extends BaseObject
 
     public function getLine(): Line
     {
-        return $this->_groups->cells->line;
+        return $this->_groups->getCells()->getLine();
     }
 
     public function setPrev($prev)
     {
-        if ($prev->getState()==$this->getState())
-            throw new \Exception('Prev group state='.$this->getState().' is same current group state');
+		//устанавливаем ссылку на предыдую группу
         $this->_prev = $prev;
+		
+		//в предыдущей группе устанавливаем ссылку на текущую группу
+		if ($prev!==null)
+		{
+			if ($prev->getState()==$this->getState())
+				throw new \Exception('Prev group state='.$this->getState().' is same current group state');
+			$prev->setNext($this);
+		}
     }
     
     public function getPrev(): ?self
@@ -188,7 +197,6 @@ class EmptyGroup extends BaseObject
 
         $view.=str_repeat($this->state,$this->_length);
 
-        
 
         if ($this->isFull())
             $view.=' '.implode(',',$this->getGroupNumbersKeys());

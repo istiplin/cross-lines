@@ -11,22 +11,27 @@ class Cells extends BaseObject implements \ArrayAccess
     
     private $_line;
 	private $_field;
-	
-    private $_list=[];
-    private $_count=0;
-    private $_unknownCount;
-	
 	private $_groups;
+	
+    private $_list;
+    private $_count=0;
 
-    public function __construct($data,$line)
+	private $_data;
+
+    public function __construct(string $data,Line $line)
     {
-        $this->_line = $line;
-		$this->_field = $line->getField();
-		
-        $this->setList($data);
-		$this->_groups = new Groups($this);
+		$this->_data = $data;
+        $this->setLine($line);
+        $this->resetList();
+		$this->setGroups();
     }
-
+	
+	public function setLine(Line $value)
+	{
+		$this->_line = $value;
+		$this->_field = $value->getField();
+	}
+	
 	public function getLine(): Line
 	{
 		return $this->_line;
@@ -37,55 +42,97 @@ class Cells extends BaseObject implements \ArrayAccess
 		return $this->_field;
 	}
 	
+	private function setGroups()
+	{
+		if ($this->_groups!==null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_groups is not null');
+		$this->_groups = new Groups($this);
+	}
+	
+	public function cloneGroups()
+	{
+		if ($this->_groups===null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_groups is null');
+			
+		$this->_groups = clone $this->_groups;
+		$this->_groups->setCells($this);
+		$this->_groups->cloneList();
+	}
+	
 	public function getGroups(): Groups
 	{
 		return $this->_groups;
 	}
 	
-    private function getElem($state,$ind)
-    {
-        if ($this->_field!==null)
-            return $this->_field->getCell($state,$ind,$this->_line);
+	public function getData()
+	{
+		if ($this->_list===null)
+			return null;
 			
+        $data='';
+        for ($i = 0; $i<$this->_count; $i++)
+            $data.=$this->_list[$i]->getState();
+        return $data;
+	}
+	
+    private function getElem($ind)
+    {
+		$line = $this->getLine();
+        if ($this->_field!==null)
+            $cell = $this->_field->getCell($ind,$line);
 		//для юнит-тестов
 		elseif ($this->_line->isHorizontal)
-			return new Cell($state,$ind,$this->_line->ind);
+			$cell = new Cell($this->_field);
 		//для юнит-тестов
 		else
-			return new Cell($state,$this->_line->ind,$ind);
+			$cell = new Cell($this->_field);
+			
+		return new CellData($ind,$cell,$this);
     }
     
-    private function setList($data)
+	private function resetList()
+	{
+		$this->_list = null;
+		$this->setList();
+	}
+	
+    private function setList()
     {
-        $this->_unknownCount=0;
+		if ($this->_list!==null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_list is not null');
+	
+		$this->_count = strlen($this->_data);
+        $this->_line->setUnknownCount($this->_count);
 		$prevElem = null;
-        for($i=0; $i<strlen($data); $i++)
+        for($i=0; $i<$this->_count; $i++)
 		{
-            $elem = $this->getElem($data[$i],$i);
-			
-			$elem->setCells($this);
+            $elem = $this->getElem($i);
+			$elem->setState($this->_data[$i]);
 			$elem->setPrev($prevElem);
 			$prevElem = $elem;
 			
 			$this->_list[$i] = $elem;
-			$this->_count++;
-			if ($elem->isUnknown())
-				$this->_unknownCount++;
 		}
 		$prevElem->setNext(null);
     }
-    
-    public function changeAttrs()
-    {
-        $prevCell = null;
-        for($i=0; $i<$this->_count; $i++)
-        {
-            $cell = $this->_list[$i];
-            //$cell->setPrev($prevCell);
-            //$prevCell = $cell;
-        }
-        //$prevCell->next=null;
-    }
+	
+	public function cloneList()
+	{
+		if ($this->_list===null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
+		
+		$prevElem = null;
+		for($i=0; $i<$this->_count; $i++)
+		{
+			$elem = clone $this->_list[$i];
+			$elem->setField($this->_field);
+			$elem->setCells($this);
+			$elem->setPrev($prevElem);
+			$prevElem = $elem;
+			$this->_list[$i] = $elem;
+		}
+		$prevElem->setNext(null);
+	}
 
     //возвращает итоговую длину возможной закрашенной группы,
     //начиная с позиции $fullBegPos, пытаясь пройти  расстояние длиной $fullLength
@@ -95,7 +142,7 @@ class Cells extends BaseObject implements \ArrayAccess
         if ($fullLength==0)
             throw new \Exception('$fullLength is 0');
 
-        if ($this[$fullBegPos]->isEmpty())
+        if ($this->_list[$fullBegPos]->isEmpty())
             throw new \Exception('$fullBegPos is empty');
 
         $resFullLength = 0;
@@ -115,38 +162,38 @@ class Cells extends BaseObject implements \ArrayAccess
             $step = -1;
         }
 
-        if ($this[$currPos]->isFull())
+        if ($this->_list[$currPos]->isFull())
         {
-            if ($currPos !== $this[$currPos]->$groupStart)
-                throw new \Exception("currPos=$currPos is not $groupStart = {$this[$currPos]->$groupStart} (fullBegPos=$fullBegPos, fullLength=$fullLength, $direction)");
-            if ($fullLength < $this[$currPos]->groupLength)
+            if ($currPos !== $this->_list[$currPos]->$groupStart)
+                throw new \Exception("currPos=$currPos is not $groupStart = {$this->_list[$currPos]->$groupStart} (fullBegPos=$fullBegPos, fullLength=$fullLength, $direction)");
+            if ($fullLength < $this->_list[$currPos]->groupLength)
                 return 0;
-            if ($fullLength == $this[$currPos]->groupLength)
+            if ($fullLength == $this->_list[$currPos]->groupLength)
                 return $fullLength;
         }
 
         while(true) {
 
-            if ($this[$currPos]->isFull()) {
-                $resFullLength += ($step*($this[$currPos]->$groupEnd - $currPos) + 1);
+            if ($this->_list[$currPos]->isFull()) {
+                $resFullLength += ($step*($this->_list[$currPos]->$groupEnd - $currPos) + 1);
             }
-            elseif ($this[$currPos]->isUnknown()) {
-                $resFullLength += ($step*($this[$currPos]->$groupEnd - $currPos) + 1);
+            elseif ($this->_list[$currPos]->isUnknown()) {
+                $resFullLength += ($step*($this->_list[$currPos]->$groupEnd - $currPos) + 1);
                 if ($resFullLength > $fullLength)
                     return $fullLength;
-                if ($this[$currPos]->$nextGroupIsEmpty)
+                if ($this->_list[$currPos]->$nextGroupIsEmpty)
                     return $resFullLength;
                 if ($resFullLength == $fullLength)
                     return $resFullLength - 1;
 
-                $nextLength = $this[$currPos]->group->$next->length;
+                $nextLength = $this->_list[$currPos]->group->$next->length;
                 if ($fullLength < $resFullLength + $nextLength)
                     return $resFullLength - 1;
 
             }
-            if ($this[$currPos]->$nextGroupIsEmpty)
+            if ($this->_list[$currPos]->$nextGroupIsEmpty)
                 break;
-            $currPos = $this[$currPos]->$groupEnd + $step;
+            $currPos = $this->_list[$currPos]->$groupEnd + $step;
         }
 
         return $resFullLength;
@@ -156,6 +203,8 @@ class Cells extends BaseObject implements \ArrayAccess
     //начиная поиск с позиции $fullBegPos в направлении $direction
     public function getFullBegPos($fullBegPos, $fullLength, $direction): int
     {
+		$fullBegPos1 = $fullBegPos;
+	
         $next = 1;
         $groupStart = 'groupStart';
         $groupEnd = 'groupEnd';
@@ -172,7 +221,7 @@ class Cells extends BaseObject implements \ArrayAccess
         
         if (-1<$fullBegPos AND $fullBegPos<$this->_count)
         {
-            if ($this[$fullBegPos]->isUnknown() AND $this[$fullBegPos]->$prevIsFull())
+            if ($this->_list[$fullBegPos]->isUnknown() AND $this->_list[$fullBegPos]->$prevIsFull())
             {
                 $fullBegPos+=$next;
             }
@@ -183,46 +232,46 @@ class Cells extends BaseObject implements \ArrayAccess
         while(-1<$currPos AND $currPos<$this->_count)
         {
             //если текущая клетка - крестик
-            if ($this[$currPos]->isEmpty())
+            if ($this->_list[$currPos]->isEmpty())
                 //смещаем указатели в следующую группу
-                $fullBegPos = $currPos = $this[$currPos]->$groupEnd + $next;
+                $fullBegPos = $currPos = $this->_list[$currPos]->$groupEnd + $next;
             //иначе если текущая клетка не заполнена
-            elseif ($this[$currPos]->isUnknown()) {
+            elseif ($this->_list[$currPos]->isUnknown()) {
                 //определяем конечную позицию незаполненной группы
-                $endUnknownPos = $this[$currPos]->$groupEnd;
+                $endUnknownPos = $this->_list[$currPos]->$groupEnd;
                 //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
-                $dist = $this[$fullBegPos]->getDist($endUnknownPos);
+                $dist = $this->_list[$fullBegPos]->getDist($endUnknownPos);
                 //если расстояние больше текущего числа или
                 if ($dist > $fullLength OR
                     //расстояние равно текущему числу и следующая группа крестик или конец
-                    $dist == $fullLength AND $this[$currPos]->$nextGroupIsEmpty)
+                    $dist == $fullLength AND $this->_list[$currPos]->$nextGroupIsEmpty)
                     //считаем последеняя пока что результирующая позиция, окончательно ей являестя
                     return $fullBegPos;
                 else
                     //иначе смещаем указатель к следующей группе
-                    $currPos = $this[$currPos]->$groupEnd + $next;
+                    $currPos = $this->_list[$currPos]->$groupEnd + $next;
             }
             //иначе если текущая клетка закрашена
-            elseif ($this[$currPos]->isFull()) {
+            elseif ($this->_list[$currPos]->isFull()) {
                 //если длина текущей группы больше текущего числа
-                if ($this[$currPos]->groupLength > $fullLength)
+                if ($this->_list[$currPos]->groupLength > $fullLength)
                     //смещаем указатели на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
-                    $fullBegPos = $currPos = $this[$currPos]->$groupEnd + $next*2;
+                    $fullBegPos = $currPos = $this->_list[$currPos]->$groupEnd + $next*2;
                 //если длина текущей группы равно текущему числу
-                elseif ($this[$currPos]->groupLength == $fullLength)
+                elseif ($this->_list[$currPos]->groupLength == $fullLength)
                     //считаем последеняя пока что результирующая позиция, окончательно ей являестя
-                    return $this[$currPos]->$groupStart;
+                    return $this->_list[$currPos]->$groupStart;
                 //если длина текущей группы меньше текущего числа
-                elseif ($this[$currPos]->groupLength < $fullLength) {
+                elseif ($this->_list[$currPos]->groupLength < $fullLength) {
                     //определяем конечную позицию текущей группы
-                    $endFullPos = $this[$currPos]->$groupEnd;
+                    $endFullPos = $this->_list[$currPos]->$groupEnd;
                     //определяем расстояние от текущей пока что результирующей позиции до конечной позиции текущей группы
-                    $dist = $this[$fullBegPos]->getDist($endFullPos);
+                    $dist = $this->_list[$fullBegPos]->getDist($endFullPos);
 
                     //если расстояние меньше текущего числа
                     if ($dist < $fullLength)
                         //иначе смещаем указатель к следующей группе
-                        $currPos = $this[$currPos]->$groupEnd + $next;
+                        $currPos = $this->_list[$currPos]->$groupEnd + $next;
                     //иначе если расстояние равно текущему числу
                     elseif ($dist == $fullLength)
                         //считаем, что последняя, пока что, результирующая позиция, окончательно ей являестя
@@ -231,35 +280,23 @@ class Cells extends BaseObject implements \ArrayAccess
                     elseif ($dist > $fullLength)
                     {
                         //если результирующая позиция находится в незаполненной клетке
-                        if ($this[$fullBegPos]->isUnknown())
+                        if ($this->_list[$fullBegPos]->isUnknown())
                             //считаем, что она окончательно является результирующей
                             $fullBegPos = $endFullPos - $next*($fullLength - 1);
                         //иначе если  результирующая позиция находится в закрашенной клетке
-                        elseif ($this[$fullBegPos]->isFull())
+                        elseif ($this->_list[$fullBegPos]->isFull())
                             //смещаем её на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
-                            $fullBegPos = $this[$fullBegPos]->$groupEnd + $next*2;
+                            $fullBegPos = $this->_list[$fullBegPos]->$groupEnd + $next*2;
                     }
                 }
             }
         }
-		throw new \Exception('Error! method '.__METHOD__.' return is null');
+		throw new \Exception('Error! method '.__METHOD__.' return is null. '."[$fullBegPos1,$fullLength,$direction] {$this->getData()}");
     }
 
     public function getNumbers(): Numbers
     {
         return $this->_line->numbers;
-    }
-    
-    public function getUnknownCount(): int
-    {
-        return $this->_unknownCount;
-    }
-    
-    public function decrUnknownCount($pos)
-    {
-        $this->_unknownCount--;
-        if ($this->_unknownCount<0)
-            throw new \Exception(' error line:'.$this->_line->ind.' pos:'.$pos.'. this->unknownCount is bellow zero');
     }
     
     public function getList(): array
@@ -272,32 +309,32 @@ class Cells extends BaseObject implements \ArrayAccess
         return $this->_count;
     }
     
-    public function setFullStates($start,$end)
+    private function setState($state,$start,$end=null)
     {
-        for ($i=$start; $i<=$end; $i++)
-            $this->_list[$i]->setFull();
-    }
-    
-    public function setEmptyStates($start,$end)
-    {
-        for ($i=$start; $i<=$end; $i++)
-            $this->_list[$i]->setEmpty();
+		if ($end===null)
+			$this->_list[$start]->setState($state);
+		else
+		{
+			for ($i=$start; $i<=$end; $i++)
+				$this->_list[$i]->setState($state);
+		}
     }
 
-    public function getView()
+    public function setFullStates($start,$end=null)
     {
-        $view='';
-        for ($i = 0; $i<$this->_count; $i++)
-            $view.=$this->list[$i]->state;
-        return $view;
+		$this->setState(Cell::FULL_STATE,$start,$end);
+    }
+    
+    public function setEmptyStates($start,$end=null)
+    {
+		$this->setState(Cell::EMPTY_STATE,$start,$end);
     }
     
     public function view()
     {
         $this->numbers->view();
         echo ' ';
-        for($i=0; $i<$this->count; $i++)
-            echo $this->list[$i]->state;
+		echo $this->getData();
         echo '<br>';
     }
 }

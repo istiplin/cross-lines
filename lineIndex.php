@@ -4,12 +4,15 @@
     $dataName = 'lineResolves.php';
     $datas = require 'tests/_data/'.$dataName;
 
-    $lineInd = 400;
+    //$lineInd = 400;
+	//$lineInd = 68;
+	$lineInd = 53;
 
     $data = $datas[$lineInd];
 
     $isMirror = false;
 
-    $model = new models\Line($lineInd,$data[0],$data[1],true,null,$isMirror);
-
-    $model->resolve(1,1);
+    $line = new models\Line($lineInd,$data[0],$data[1],false,null,$isMirror);
+	echo $line->getCells()->getData().'<br>';
+    $line->resolve();
+    echo $line->getCells()->getData();

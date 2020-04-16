@@ -10,26 +10,58 @@ class Numbers extends BaseObject implements \ArrayAccess
     use TArrayAccess;
     
     private $_line;
-	private $_cells;
+	
     private $_list;
     private $_count=0;
+	private $_data;
     
-    public function __construct($data,$line)
+    public function __construct($data,Line $line)
     {
-        $this->_line = $line;
-        $this->setList($data);
+		$this->_data = $data;
+		$this->setLine($line);
+        $this->resetList();
     }
+	
+	public function setLine(Line $value)
+	{
+		$this->_line = $value;
+	}
     
-    private function setList($data)
+	private function resetList()
+	{
+		$this->_list = null;
+		$this->setList();
+	}
+	
+    private function setList()
     {
-        $elem = null;
+		if ($this->_list!==null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_list is not null');
+			
+		$data = $this->_data;
         $this->_count = count($data);
+		$elem = null;
         for($i=0; $i<$this->_count; $i++)
         {	
-            $elem = new Number($this,$data[$i],$i,$elem);
-            $this->_list[$i] = $elem;
+            $this->_list[$i] = new Number($this,$data[$i],$i,$elem);
+            $elem = $this->_list[$i];
         }
     }
+	
+	public function cloneList()
+	{
+		if ($this->_list===null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
+		
+		$prevElem = null;
+        for($i=0; $i<$this->_count; $i++)
+        {	
+            $elem = clone $this->_list[$i];
+			$elem->init($this,$prevElem);
+			$prevElem = $elem;
+            $this->_list[$i] = $elem;
+        }
+	}
     
 	public function setCells($value)
 	{
@@ -66,6 +98,9 @@ class Numbers extends BaseObject implements \ArrayAccess
     //для каждого числа определяем возможные границы нахождения закрашенных клеток
     public function setBounds()
     {
+		for($i=0; $i<$this->_count; $i++)
+			$this->_list[$i]->clearBound();
+			
         for($i=0; $i<$this->_count; $i++)
             $this->_list[$i]->setBound();
         
@@ -90,12 +125,14 @@ class Numbers extends BaseObject implements \ArrayAccess
     
     public function resolve()
     {
-        $this->_line->isChange = true;
-        while ($this->_line->isChange) {
-            $this->_line->isChange = false;
-            $this->setFullCellsByBounds();
-            $this->setEmptyCellsByBounds();
-        }
+		if ($this->_line->getUnknownCount()>0)
+		{
+			$this->setFullCellsByBounds();
+			$this->setEmptyCellsByBounds();
+		}
+		else
+            $this->_line->isChangeByGroups = false;
+        $this->_line->isChangeByNumbers = false;
     }
 
     public function printBounds()

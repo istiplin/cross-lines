@@ -4,16 +4,20 @@
     $dataName = 'fieldResolves.php';
     $datas = require 'tests/_data/'.$dataName;
     
-    $fieldInd = 2;
+    $fieldInd = 4;
     
     $data = $datas[$fieldInd];
 
-    $model = new models\Field($data[0], $data[1],$data['name']);
+    $field = new models\Field($data[0], $data[1],$data[2],$data['name']);
     
-    echo $model->name.'<br>';
+    echo $field->name.'<br>';
     
-    echo $model->sizeView();
+    echo $field->sizeView().'<br>';
     
-    $model->resolve();
-    
-    echo $model->view;
+    if ($field->resolve())
+		echo 'SUCCESS!';
+	else
+		echo 'ERROR!';
+	echo $field->view;
+	
+	$field->unknownCellsArrView();

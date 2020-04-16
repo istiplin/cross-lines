@@ -10,12 +10,14 @@ class Groups extends BaseObject implements \ArrayAccess
     use TArrayAccess;
     
     private $_cells;
+	private $_line;
+	
     private $_list;
     private $_count=0;
 
     public function __construct(Cells $cells)
     {
-        $this->_cells = $cells;
+        $this->setCells($cells);
     }
 
     public function getList(): array
@@ -25,6 +27,17 @@ class Groups extends BaseObject implements \ArrayAccess
         return $this->_list;
     }
     
+	public function setCells(Cells $value)
+	{
+		$this->_cells = $value;
+		$this->_line = $value->getLine();
+	}
+	
+	public function getLine(): Line
+	{
+		return $this->_line;
+	}
+	
 	public function getCells(): Cells
 	{
 		return $this->_cells;
@@ -46,35 +59,69 @@ class Groups extends BaseObject implements \ArrayAccess
         if ($this->_list!==null)
             return;
 
-        $group = null;
+        $elem = null;
         $this->_count = 0;
         $this->_list=[];
-        $cells = $this->_cells;
+        $cells = $this->getCells();
+		$cellsCount = $cells->count;
         $prevState = null;
-        for($i=0; $i<$cells->count; $i++)
+        for($i=0; $i<$cellsCount; $i++)
         {
             $currState = $cells[$i]->state;
             //если предыдущее состояние не равно текущему
             if ($prevState!==$currState) {
                 //создаем новую группу
-                $group = EmptyGroup::initial($this, $currState, $i, $this->_count, $group);
+                $elem = EmptyGroup::initial($this, $currState, $i, $this->_count, $elem);
 
                 //и заносим его в список
-                $this->_list[$this->_count] = $group;
+                $this->_list[$this->_count] = $elem;
                 $this->_count++;
                 $prevState = $currState;
             }
 
             //в текущей клетке делаем ссылку на текущую группу
-            $cells[$i]->setGroup($group);
+            $cells[$i]->setGroup($elem);
 
             //если текущая клетка последняя или следующее состояние клетки другое
             if ($cells[$i]->getNext()===null OR $currState!==$cells[$i]->getNext()->getState())
                 //текущей группе задаем последнюю позицию текущей клетки
-                $group->end = $i;
+                $elem->setEnd($i);
         }
         
     }
+	
+	public function cloneList()
+	{
+		if ($this->_list===null)
+			throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
+		
+        $prevElem = null;
+        $elemCount = 0;
+        $cells = $this->getCells();
+		$cellsCount = $cells->count;
+        $prevState = null;
+        for($i=0; $i<$cellsCount; $i++)
+        {
+            $currState = $cells[$i]->state;
+            //если предыдущее состояние не равно текущему
+            if ($prevState!==$currState) {
+                //создаем новую группу
+                $elem = clone $this->_list[$elemCount];
+				$elem->setPrev($prevElem);
+				$elem->setGroups($this);
+                //и заносим его в список
+                $this->_list[$elemCount] = $elem;
+                $elemCount++;
+				$prevElem = $elem;
+				
+                $prevState = $currState;
+            }
+
+            //в текущей клетке делаем ссылку на текущую группу
+            $cells[$i]->setGroup($elem);
+        }
+		
+	}
 
     private function setGroupNumbers()
     {
@@ -127,12 +174,27 @@ class Groups extends BaseObject implements \ArrayAccess
 
     public function resolve()
     {
-        $this->_list = null;
-        $this->deleteGroupNumbers();
+		if ($this->_line->getUnknownCount()>0)
+		{
+			$this->_list = null;
+			$this->deleteGroupNumbers();
 
-        $this->setFullCells();
-        $this->setEmptyCells();
+			$this->setFullCells();
+			$this->setEmptyCells();
+		}
+		else
+            $this->_line->isChangeByNumbers = false;
+        $this->_line->isChangeByGroups = false;
     }
+	
+	public function resolveByClone()
+	{
+        for($i=0; $i<$this->_count; $i++)
+        {
+            if ($this[$i]->isUnknown())
+                $this[$i]->resolveByClone();
+        }
+	}
 
     public function view()
     {
