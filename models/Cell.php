@@ -17,15 +17,40 @@ class Cell extends BaseObject
 	private $_horOr;	//объект, в котором хранятся данные о горизонтальной ориентации текущего объекта клетки
 	private $_vertOr;	//объект, в котором хранятся данные о вертикальной ориентации текущего объекта клетки
 	
-	public $fieldInd=null;
+	private $_x;
+	private $_y;
+	private $_id;
 	
 	public $unknownCountByFull;
 	public $unknownCountByEmpty;
 
-    public function __construct(?Field $field)
+    public function __construct(int $x, int $y, Field $field = null)
     {
-		$this->_field = $field;
+		$this->_x = $x;
+		$this->_y = $y;
+		if ($field===null)
+			$this->_id = $x;
+		else
+		{
+			$this->_field = $field;
+			$this->_id = $y*$field->getWidth()+$x;
+		}
     }
+	
+	public function getX()
+	{
+		return $this->_x;
+	}
+	
+	public function getY()
+	{
+		return $this->_y;
+	}
+	
+	public function getId()
+	{
+		return $this->_id;
+	}
 	
 	public function setCellData(CellData $cellData,bool $isHorizontal)
 	{
@@ -40,49 +65,61 @@ class Cell extends BaseObject
         return $this->_state;
     }
 	
+    public function setFull()
+    {
+        $this->setState(self::FULL_STATE);
+    }
+
+    public function setEmpty()
+    {
+        $this->setState(self::EMPTY_STATE);
+    }
+	
+    public function setUnknown()
+    {
+        $this->setState(self::UNKNOWN_STATE);
+    }
+	
     public function setState($state)
     {
+		//если мы хотим заштриховать клетку а ней крестик, то это ошибка
 		if ($this->isFull($state) AND $this->isEmpty())
-            throw new \Exception($this->cells->getData().' error in line:'.$this->getCells()->getLine()->ind.' pos '.$this->getInd().' is empty instead full');
-			
-        if ($this->isEmpty($state) AND $this->isFull())
-            throw new \Exception($this->cells->getData().' error in line:'.$this->getCells()->getLine()->ind.' pos '.$this->getInd().' is full instead empty');	
+            throw new \Exception('x:'.$this->_x.' y:'.$this->_y.' is empty instead full');
 		
+		//если мы хотим поставить крастик, а клетка заштрихована, то это ошибка
+        if ($this->isEmpty($state) AND $this->isFull())
+            throw new \Exception($this->_x.' '.$this->_y.' is full instead empty');	
+		
+		//если мы хотим поменять состояние клетки на известное и текущее неизвестное, 
+		//то меняем, за одно меняя некоторые свойства на других объектах
         if (!$this->isUnknown($state) AND $this->isUnknown())
         {
 			if ($this->_field)
-				$this->_field->deleteUnknownCell($this->fieldInd);
+			{
+				$this->_field->deleteUnknownCell($this->_id);
+				if ($this->_field->isTest)
+					$this->_field->testCells[$this->_id] = $this;
+			}
 
 			$oldState = $this->_state;
 			$this->_state = $state;
-			$this->setIsChange($oldState,$state);
+			
+			if ($this->_horOr)
+				$this->_horOr->setIsChange($state,$oldState);
+			if ($this->_vertOr)
+				$this->_vertOr->setIsChange($state,$oldState);
+			
         }
-    }
-	
-	private function setIsChange($oldState,$state)
-	{
-		if ($this->_horOr)
-			$cellData = $this->_horOr;
-		else
-			$cellData = $this->_vertOr;
-			
-		$line = $cellData->getLine();
-		$ind = $cellData->getInd();
-		
-        $line->isChangeByNumbers = true;
-        $line->isChangeByGroups = true;
-		$line->decrUnknownCount($ind,$oldState,$state);
-		
-		if ($line->crossLines)
+		//если мы хотим текущее состояние клетки поменять обратно на неизвестное(нужно, когда мы разгадываем методом проб и ошибок)
+		//и текущее состояние известно, то меняем, за одно меняя некоторые свойства на других объектах
+		else if ($this->isUnknown($state) AND !$this->isUnknown() AND $this->_field->isTest)
 		{
-			$line = $line->crossLines[$ind];
-			$ind = $line->ind;
-			
-            $line->isChangeByNumbers = true;
-            $line->isChangeByGroups = true;
-			$line->decrUnknownCount($ind,$oldState,$state);
+			$this->_state = $state;
+			$this->_horOr->getLine()->incUnknownCount();
+			$this->_vertOr->getLine()->incUnknownCount();
+			$this->_field->addUnknownCell($this);
 		}
-	}
+    }
 	
     public function getFull()
     {
@@ -115,14 +152,24 @@ class Cell extends BaseObject
         return $state===self::EMPTY_STATE;
     }
 	
-    public function setFull()
-    {
-        $this->setState(self::FULL_STATE);
-    }
-
-    public function setEmpty()
-    {
-        $this->setState(self::EMPTY_STATE);
-    }
+	public function upIsEmpty() : bool
+	{
+		return $this->_vertOr->prevIsEmpty();
+	}
+	
+	public function downIsEmpty() : bool
+	{
+		return $this->_vertOr->nextIsEmpty();
+	}
+	
+	public function rightIsEmpty() : bool
+	{
+		return $this->_horOr->nextIsEmpty();
+	}
+	
+	public function leftIsEmpty() : bool
+	{
+		return $this->_horOr->prevIsEmpty();
+	}
 
 }

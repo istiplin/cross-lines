@@ -8,9 +8,11 @@ class EmptyGroup extends BaseObject
 {
     protected $_state = Cell::EMPTY_STATE;
 	
+	protected $_field;
     protected $_groups;
 	protected $_cells;
 	protected $_line;
+	protected $_numbers;
 
     protected $_start;
     protected $_length;
@@ -19,6 +21,10 @@ class EmptyGroup extends BaseObject
 
     protected $_prev;
     protected $_next;
+	
+	protected $_groupNumbers;
+    protected $_groupNumbersMinLength;
+    protected $_groupNumbersMaxLength;
 
     public static function initial($groups,string $state,$start,$ind,$prev=null)
     {
@@ -33,8 +39,10 @@ class EmptyGroup extends BaseObject
 
     public function __construct($groups,$start,$ind,$prev=null)
     {
-		$this->setPrev($prev);
 		$this->setGroups($groups);
+	
+		$this->setPrev($prev);
+		
         $this->_start = $start;
         $this->_ind = $ind;
     }
@@ -44,6 +52,8 @@ class EmptyGroup extends BaseObject
 		$this->_groups = $value;
 		$this->_cells = $value->getCells();
 		$this->_line = $value->getLine();
+		$this->_field = $this->_line->getField();
+		$this->_numbers = $this->_line->getNumbers();
 	}
 	
     public function getStart(): int
@@ -71,12 +81,12 @@ class EmptyGroup extends BaseObject
 
     public function getCells(): Cells
     {
-        return $this->_groups->cells;
+        return $this->_cells;
     }
     
     public function getNumbers(): Numbers
     {
-        return $this->line->numbers;
+        return $this->_numbers;
     }
 
     public function getLine(): Line
@@ -86,6 +96,7 @@ class EmptyGroup extends BaseObject
 
     public function setPrev($prev)
     {
+	
 		//устанавливаем ссылку на предыдую группу
         $this->_prev = $prev;
 		
@@ -94,6 +105,7 @@ class EmptyGroup extends BaseObject
 		{
 			if ($prev->getState()==$this->getState())
 				throw new \Exception('Prev group state='.$this->getState().' is same current group state');
+				
 			$prev->setNext($this);
 		}
     }
@@ -103,10 +115,11 @@ class EmptyGroup extends BaseObject
         return $this->_prev;
     }
 
-    public function setNext($next)
-    {
-        if ($next->getState()==$this->getState())
+    public function setNext(self $next)
+    {		
+        if ($next->getState()==$this->_state)
             throw new \Exception('Next group state='.$this->getState().' is same current group state');
+		
         $this->_next = $next;
     }
     
@@ -168,6 +181,30 @@ class EmptyGroup extends BaseObject
     {
         return $this->_length;
     }
+	
+	public function getPrevStart()
+	{
+		return $this->_prev->getStart();
+	}
+	
+	public function getNextEnd()
+	{
+		return $this->_next->getEnd();
+	}
+	
+	public function getPrevLength(): int
+	{
+		if ($this->_prev===null OR $this->_prev->isEmpty())
+			return 0;
+		return $this->_prev->getLength();
+	}
+	
+	public function getNextLength(): int
+	{
+		if ($this->_next===null OR $this->_next->isEmpty())
+			return 0;
+		return $this->_next->getLength();
+	}
 
     public function isUnknown():bool
     {
@@ -189,27 +226,115 @@ class EmptyGroup extends BaseObject
         return true;
     }
 
-    public function getView($indent)
+	
+	public function getCellsView()
+	{
+		$cellsData = $this->_cells->getData();
+		$cellsView = '';
+		for ($i=0; $i<strlen($cellsData); $i++)
+		{
+			if ($this->_start<=$i AND $i<=$this->_end)
+				$cellsView.='<b>'.$cellsData[$i].'</b>';
+			else
+				$cellsView.=$cellsData[$i];
+		}
+		return $cellsView;
+	}
+	
+    public function getView()
     {
-        $view='';
-        for($i=0;$i<$indent;$i++)
-            $view.='&nbsp;';
-
-        $view.=str_repeat($this->state,$this->_length);
-
-
+		$view='';
         if ($this->isFull())
-            $view.=' '.implode(',',$this->getGroupNumbersKeys());
-        elseif ($this->isUnknown())
-        {
-            $view.=' '.($this->getHasEmpty()?'hasEmpty':'');
-        }
+		{
+            $view.=' '.$this->_numbers->getLengthView($this->getGroupNumbersKeys()).' ';
+			//else
+			//	$view.=' '.$this->_numbers->getLengthView().' ';
+				
+			//if ($this->isUnknown())
+			//	$view.=' '.($this->getHasEmpty()?'hasEmpty':'');
 
-        $view.='<br>';
-
-
+			$view.=$this->getCellsView();
+			
+			$view.=' group-numbers<br>';
+		}
         return $view;
     }
-    
+	
     public function setEmptyCells(){}
+	public function setFullCells(){}
+    public function setGroupNumbers(){}
+	
+
+	
+    public function getGroupNumbers(): array
+    {
+        return $this->_groupNumbers;
+    }
+    
+    public function getGroupNumbersKeys()
+    {
+        return array_keys($this->_groupNumbers);
+    }
+	
+	public function getBegGroupNumber()
+	{
+        return reset($this->_groupNumbers);
+	}
+	
+	public function getEndGroupNumber()
+	{
+        return end($this->_groupNumbers);
+	}
+
+	public function getGroupNumbersCount():int
+	{
+		return count($this->_groupNumbers);
+	}
+	
+	public function getGroupNumberLength($ind=null):int
+	{
+		if ($ind!==null)
+			return $this->_groupNumbers[$ind]->getLength();
+			
+		if (count($this->_groupNumbers)==1)
+			return reset($this->_groupNumbers)->getLength();
+
+		throw new \Exception(__METHOD__.' $ind is null');
+	}
+	
+    public function getGroupNumbersMinInd():int
+    {
+        return reset($this->_groupNumbers)->getInd();
+    }
+	
+    public function getGroupNumbersMaxInd():int
+    {
+        return end($this->_groupNumbers)->getInd();
+    }
+    
+    public function getGroupNumbersMinLength():int
+    {
+        if ($this->_groupNumbersMinLength!==null)
+            return $this->_groupNumbersMinLength;
+        
+        $groupNumber = reset($this->_groupNumbers);
+        $min = $groupNumber->getLength();
+        foreach ($this->_groupNumbers as $groupNumber)
+            $min = min($min,$groupNumber->getLength());
+        
+        return $this->_groupNumbersMinLength = $min;
+    }
+    
+    public function getGroupNumbersMaxLength():int
+    {
+        if ($this->_groupNumbersMaxLength!==null)
+            return $this->_groupNumbersMaxLength;
+        
+        $groupNumber = reset($this->_groupNumbers);
+        $max = $groupNumber->getLength();
+        foreach ($this->_groupNumbers as $groupNumber)
+            $max = max($max,$groupNumber->getLength());
+        
+        return $this->_groupNumbersMaxLength = $max;
+    }
 }

@@ -9,8 +9,10 @@ class Groups extends BaseObject implements \ArrayAccess
 {
     use TArrayAccess;
     
+	private $_field;
     private $_cells;
 	private $_line;
+	private $_numbers;
 	
     private $_list;
     private $_count=0;
@@ -31,6 +33,8 @@ class Groups extends BaseObject implements \ArrayAccess
 	{
 		$this->_cells = $value;
 		$this->_line = $value->getLine();
+		$this->_field = $this->_line->getField();
+		$this->_numbers = $value->getNumbers();
 	}
 	
 	public function getLine(): Line
@@ -58,21 +62,23 @@ class Groups extends BaseObject implements \ArrayAccess
     {
         if ($this->_list!==null)
             return;
-
+			
         $elem = null;
         $this->_count = 0;
         $this->_list=[];
         $cells = $this->getCells();
 		$cellsCount = $cells->count;
         $prevState = null;
+		
         for($i=0; $i<$cellsCount; $i++)
         {
             $currState = $cells[$i]->state;
             //если предыдущее состояние не равно текущему
             if ($prevState!==$currState) {
+			
                 //создаем новую группу
                 $elem = EmptyGroup::initial($this, $currState, $i, $this->_count, $elem);
-
+				
                 //и заносим его в список
                 $this->_list[$this->_count] = $elem;
                 $this->_count++;
@@ -81,124 +87,130 @@ class Groups extends BaseObject implements \ArrayAccess
 
             //в текущей клетке делаем ссылку на текущую группу
             $cells[$i]->setGroup($elem);
-
+				
             //если текущая клетка последняя или следующее состояние клетки другое
             if ($cells[$i]->getNext()===null OR $currState!==$cells[$i]->getNext()->getState())
                 //текущей группе задаем последнюю позицию текущей клетки
                 $elem->setEnd($i);
         }
-        
-    }
-	
-	public function cloneList()
-	{
-		if ($this->_list===null)
-			throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
-		
-        $prevElem = null;
-        $elemCount = 0;
-        $cells = $this->getCells();
-		$cellsCount = $cells->count;
-        $prevState = null;
-        for($i=0; $i<$cellsCount; $i++)
-        {
-            $currState = $cells[$i]->state;
-            //если предыдущее состояние не равно текущему
-            if ($prevState!==$currState) {
-                //создаем новую группу
-                $elem = clone $this->_list[$elemCount];
-				$elem->setPrev($prevElem);
-				$elem->setGroups($this);
-                //и заносим его в список
-                $this->_list[$elemCount] = $elem;
-                $elemCount++;
-				$prevElem = $elem;
-				
-                $prevState = $currState;
-            }
-
-            //в текущей клетке делаем ссылку на текущую группу
-            $cells[$i]->setGroup($elem);
-        }
-		
-	}
-
-    private function setGroupNumbers()
-    {
-        for($i=0; $i<$this->_count; $i++)
-        {
-            if ($this[$i]->isFull())
-                $this[$i]->setGroupNumbers();
-        }
     }
     
-    private function deleteGroupNumbers()
-    {
-        $this->setGroupNumbers();
-
+	private function deleteFullGroupNumbers()
+	{
         for($i=0; $i<$this->_count; $i++)
         {
-            if ($this[$i]->isFull())
-                $this[$i]->deleteGroupNumbers();
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->deleteGroupNumbers();
         }
-
+		
         $minInd = null;
         for($i=0; $i<$this->_count; $i++)
         {
-            if ($this[$i]->isFull())
-                $this[$i]->deleteGroupNumbersOnBound($minInd,'min');
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->deleteGroupNumbersOnBound($minInd,'min');
         }
 
         $maxInd = null;
         for($i=$this->_count-1; $i>-1; $i--)
         {
-            if ($this[$i]->isFull())
-                $this[$i]->deleteGroupNumbersOnBound($maxInd,'max');
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->deleteGroupNumbersOnBound($maxInd,'max');
         }
+		
+	}
+	
+	private function deleteUnknownGroupNumbers()
+	{
+        for($i=0; $i<$this->_count; $i++)
+        {
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->deleteUnknownGroupNumbers();
+        }
+	}
+	
+    public function setGroupNumbers($isDetail=false)
+    {
+        for($i=0; $i<$this->_count; $i++)
+		{
+			if ($this->_list[$i]->isFull())
+				$this->_list[$i]->setGroupNumbers();
+		}
+		
+		//некоторые полученные числа удаляем
+		$this->deleteFullGroupNumbers();
+		//$this->deleteUnknownGroupNumbers();
+		
+		if ($isDetail)
+		{
+			$this->viewGroupNumbers();
+			$this->_numbers->viewBounds();
+		}
     }
 
-    private function setEmptyCells()
+    public function setEmptyCells()
     {
         for($i=0; $i<$this->_count; $i++)
             $this->_list[$i]->setEmptyCells();
     }
 
-    private function setFullCells()
+    public function setFullCells()
     {
         for($i=0; $i<$this->_count; $i++)
         {
-            if ($this->_list[$i]->isFull())
-                $this->_list[$i]->setFullCells();
+			$this->_list[$i]->setFullCells();
         }
     }
+	
+	public function setStateCells($isView=false)
+	{
+		$this->setFullCells();
+		$this->setEmptyCells();
+		
+		if ($isView)
+			echo $this->_line->getView($isView).' group-<b>RESULT</b><br>';
+	}
 
-    public function resolve()
+    public function solve($isView=false, $isDetail=false)
     {
-		if ($this->_line->getUnknownCount()>0)
+	
+		$unknownCount = $this->_line->getUnknownCount() + 1;
+		while($this->_line->getUnknownCount()<$unknownCount AND $this->_line->getUnknownCount()>0)
 		{
-			$this->_list = null;
-			$this->deleteGroupNumbers();
+			$unknownCount = $this->_line->getUnknownCount();
+			
+			$this->resetList();
+			
+			$this->setGroupNumbers();
 
+			if ($isDetail)
+				$this->viewGroupNumbers();
+			
 			$this->setFullCells();
 			$this->setEmptyCells();
+			
+			if ($isView)
+				echo $this->_line->getView(true).' group-<b>RESULT</b><br>';
 		}
-		else
-            $this->_line->isChangeByNumbers = false;
-        $this->_line->isChangeByGroups = false;
     }
 	
-	public function resolveByClone()
+	public function solveByClone()
 	{
         for($i=0; $i<$this->_count; $i++)
         {
             if ($this[$i]->isUnknown())
-                $this[$i]->resolveByClone();
+                $this[$i]->solveByClone();
         }
 	}
 
-    public function view()
+    public function viewGroupNumbers()
     {
         for($i=0; $i<$this->count; $i++)
-            echo $this[$i]->getView(2);
+            echo $this[$i]->getView();
     }
+	
+	public function view()
+	{
+		$this->viewGroupNumbers();
+		echo $this->_line->getView().' group-<b>RESULT</b><br>';
+	}
 }

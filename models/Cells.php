@@ -49,43 +49,49 @@ class Cells extends BaseObject implements \ArrayAccess
 		$this->_groups = new Groups($this);
 	}
 	
-	public function cloneGroups()
-	{
-		if ($this->_groups===null)
-			throw new \Exception('Error! '.__METHOD__.' $this->_groups is null');
-			
-		$this->_groups = clone $this->_groups;
-		$this->_groups->setCells($this);
-		$this->_groups->cloneList();
-	}
-	
 	public function getGroups(): Groups
 	{
 		return $this->_groups;
 	}
 	
-	public function getData()
+	public function getData($isViewChange=false,string $delimiter = '')
 	{
 		if ($this->_list===null)
 			return null;
 			
+		$oldData = $this->_data;
+		$this->_data = '';
         $data='';
         for ($i = 0; $i<$this->_count; $i++)
-            $data.=$this->_list[$i]->getState();
+		{
+			if (!$isViewChange OR $oldData[$i]==$this->_list[$i]->getState())
+				$data.=$this->_list[$i]->getState();
+			else
+				$data.='<b>'.$this->_list[$i]->getState().'</b>';
+			
+			$this->_data.=$this->_list[$i]->getState();
+			
+			if (strlen($delimiter) AND ($i+1)%10==0)
+				$data.= $delimiter;
+		}
         return $data;
 	}
 	
-    private function getElem($ind)
+    public function getElem($ind):CellData
     {
+		if (array_key_exists($ind,$this->_list))
+			return $this->_list[$ind];
+	
 		$line = $this->getLine();
         if ($this->_field!==null)
             $cell = $this->_field->getCell($ind,$line);
+		
 		//для юнит-тестов
 		elseif ($this->_line->isHorizontal)
-			$cell = new Cell($this->_field);
+			$cell = new Cell($ind,$line->ind);
 		//для юнит-тестов
 		else
-			$cell = new Cell($this->_field);
+			$cell = new Cell($ind,$line->ind);
 			
 		return new CellData($ind,$cell,$this);
     }
@@ -104,6 +110,7 @@ class Cells extends BaseObject implements \ArrayAccess
 		$this->_count = strlen($this->_data);
         $this->_line->setUnknownCount($this->_count);
 		$prevElem = null;
+		$this->_list = [];
         for($i=0; $i<$this->_count; $i++)
 		{
             $elem = $this->getElem($i);
@@ -259,7 +266,7 @@ class Cells extends BaseObject implements \ArrayAccess
                     $fullBegPos = $currPos = $this->_list[$currPos]->$groupEnd + $next*2;
                 //если длина текущей группы равно текущему числу
                 elseif ($this->_list[$currPos]->groupLength == $fullLength)
-                    //считаем последеняя пока что результирующая позиция, окончательно ей являестя
+                    //считаем последняя пока что результирующая позиция, окончательно ей являестя
                     return $this->_list[$currPos]->$groupStart;
                 //если длина текущей группы меньше текущего числа
                 elseif ($this->_list[$currPos]->groupLength < $fullLength) {
@@ -291,7 +298,7 @@ class Cells extends BaseObject implements \ArrayAccess
                 }
             }
         }
-		throw new \Exception('Error! method '.__METHOD__.' return is null. '."[$fullBegPos1,$fullLength,$direction] {$this->getData()}");
+		throw new \Exception('Error! Line:'.$this->line->ind.' Method '.__METHOD__.' return is null. '."[$fullBegPos1,$fullLength,$direction] {$this->getData()}");
     }
 
     public function getNumbers(): Numbers
@@ -329,7 +336,30 @@ class Cells extends BaseObject implements \ArrayAccess
     {
 		$this->setState(Cell::EMPTY_STATE,$start,$end);
     }
-    
+	
+	//определяет границу закрашенных клеток
+	public function getFullBound($beg,$end):array
+	{
+        $fullMinPos = $fullMaxPos = null;
+        //пытаемся на этой границе найти закрашенные клетки
+        for ($pos = $beg; $pos<=$end; $pos++)
+        {
+            if ($this->_list[$pos]->isFull())
+            {
+                if ($fullMinPos===null)
+                    $fullMinPos=$pos;
+                $fullMaxPos = $pos;
+            }
+        }
+		return [$fullMinPos,$fullMaxPos];
+	}
+	
+	public function setEmpty($ind)
+	{	
+		if ($ind>=0 AND $ind<$this->_count)
+			$this->_list[$ind]->setEmpty();
+	}
+	
     public function view()
     {
         $this->numbers->view();

@@ -1,0 +1,1 @@
+php D:\web\Apache24\htdocs\www\japan-resolve\console.php

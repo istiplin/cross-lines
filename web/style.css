@@ -1,0 +1,9 @@
+.numbers-menu{
+	position: absolute;
+	display: none;
+	background-color: white;
+	cursor: pointer;
+}
+.numbers-menu .number:hover{
+	background-color: #99f;
+}

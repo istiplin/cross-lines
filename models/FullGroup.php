@@ -5,14 +5,7 @@ namespace models;
 class FullGroup extends EmptyGroup
 {
     protected $_state = Cell::FULL_STATE;
-    private $_groupNumbers;
-    
-    private $_groupNumbersMinInd;
-    private $_groupNumbersMaxInd;
-    
-    private $_groupNumbersMinLength;
-    private $_groupNumbersMaxLength;
-
+	
     public function isUnknown():bool
     {
         return false;
@@ -32,38 +25,91 @@ class FullGroup extends EmptyGroup
     {
         return false;
     }
-    
-    public function setGroupNumbers($value=null)
+
+    public function setEmptyCells()
     {
-        if ($value!==null)
-            $this->_groupNumbers = $value;
+		//ставим крестики вокру текущей группы, если её длина совпадает со значением всех её соответствующих чисел
+		//0000011111000000=>0000211111200000		
+        if ($this->getGroupNumbersMinLength()==$this->getGroupNumbersMaxLength())
+		{
+			if ($this->_groupNumbersMinLength==$this->_length)
+			{
+				$this->_cells->setEmpty($this->_start-1);
+				$this->_cells->setEmpty($this->_end+1);
+			}
+			elseif($this->prevIsEmpty() AND $this->nextIsUnknown())
+				$this->_cells->setEmpty($this->_start+$this->_groupNumbersMinLength);
+			elseif($this->nextIsEmpty() AND $this->prevIsUnknown())
+				$this->_cells->setEmpty($this->_end-$this->_groupNumbersMinLength);
+		}
+    }
 
-        if ($this->_groupNumbers!==null)
-            return;
+    public function setFullCells()
+    {
+		//заполняем клетки слева направо
+		//доходим до текущей группы, а затем закрашиваем
+		
+		$group = $this->getPrev();
+		while($group!==null AND !$group->isEmpty() AND !($this->prevIsUnknown() AND $this->prevHasEmpty()))
+			$group = $group->getPrev();
+			
+		if ($group===null)
+			//|4|110000...->|4|111100...
+			$noFullBeg = 0;
+		elseif ($group->isEmpty())
+			//|4|...2110000...->|4|...2111100...
+			$noFullBeg = $group->getEnd()+1;
+		elseif ($this->prevIsUnknown() AND $this->prevHasEmpty())
+			//|...|4|...0110110000...->|...|4|...0110111100...
+			$noFullBeg = $group->getStart()+1;
 
+		$dist = $this->_end - $noFullBeg + 1;
+		$minLength = $this->getGroupNumbersMinLength();
+		if ($dist < $minLength)
+		{
+			$beg = $this->_end+1;
+			$end = $noFullBeg + $minLength-1;
+			$this->_cells->setFullStates($beg,$end);
+		}
+		
+		//заполняем клетки справа налево
+		//доходим до текущей группы, а затем закрашиваем
+		$group = $this->getNext();
+		while($group!==null AND !$group->isEmpty() AND !($this->nextIsUnknown() AND $this->nextHasEmpty()))
+			$group = $group->getNext();
+		
+		if ($group===null)
+			$noFullEnd = $this->_cells->getCount()-1;
+		elseif ($group->isEmpty())
+			$noFullEnd = $group->getStart()-1;
+		elseif ($this->nextIsUnknown() AND $this->nextHasEmpty())
+			$noFullEnd = $group->getEnd()-1;
 
+		$dist = $noFullEnd - $this->_start + 1;
+		$minLength = $this->getGroupNumbersMinLength();
+		if ($dist < $minLength)
+		{
+			$end = $this->_start-1;
+			$beg = $noFullEnd - $minLength+1;
+			$this->_cells->setFullStates($beg,$end);
+		}
+		
+    }
+
+    public function setGroupNumbers()
+    {
         $this->_groupNumbers = [];
-        for ($i=0; $i<$this->numbers->count; $i++)
+		
+        for ($i=0; $i<$this->_numbers->getCount(); $i++)
         {
-            $minPos = $this->numbers->getMinPos($i);
-            $maxPos = $this->numbers->getMaxPos($i);
+            $minPos = $this->_numbers->getMinPos($i);
+            $maxPos = $this->_numbers->getMaxPos($i);
             if ($minPos<=$this->_start AND $this->_end<=$maxPos)
                 $this->_groupNumbers[$i] = $this->numbers[$i];
         }
-
-        //$this->_groupNumbers = $this->numbers->list;
+		
         if (count($this->_groupNumbers)===0)
-            throw new \Exception('error in '.__CLASS__.' line '.$this->line->ind.' number '.$this->ind.' this->_groupNumbers has count=0.');
-    }
-
-    public function getGroupNumbers()
-    {
-        return $this->_groupNumbers;
-    }
-    
-    public function getGroupNumbersKeys()
-    {
-        return array_keys($this->_groupNumbers);
+            throw new \Exception('error in '.__CLASS__.' '.$this->_cells->getData().' line '.$this->line->ind.' numberGroup '.$this->ind.' this->_groupNumbers has count=0.');
     }
 
     private function unsetGroupNumber($ind)
@@ -71,122 +117,13 @@ class FullGroup extends EmptyGroup
         if (!array_key_exists($ind, $this->_groupNumbers))
             return;
 
-        //if (count($this->_groupNumbers)>1)
-            unset($this->_groupNumbers[$ind]);
+        unset($this->_groupNumbers[$ind]);
         if (count($this->_groupNumbers)==0)
             throw new \Exception('error in '.__CLASS__.' line='.$this->line->ind.', numberGroup='.$this->ind.', currNum='.$ind.' this->_groupNumbers has count=0.');
     }
 
-    public function getGroupNumbersMinInd():int
-    {
-        if ($this->_groupNumbersMinInd!==null)
-            return $this->_groupNumbersMinInd;
 
-        $groupNumbers = $this->_groupNumbers;
-        reset($groupNumbers);
-        return $this->_groupNumbersMinInd = key($groupNumbers);
-    }
-    
-    public function getGroupNumbersMaxInd():int
-    {
-        if ($this->_groupNumbersMaxInd!==null)
-            return $this->_groupNumbersMaxInd;
-
-        $groupNumbers = $this->_groupNumbers;
-        end($groupNumbers);
-        return $this->_groupNumbersMaxInd = key($groupNumbers);
-    }
-    
-    public function getGroupNumbersMinLength():int
-    {
-        if ($this->_groupNumbersMinLength!==null)
-            return $this->_groupNumbersMinLength;
-        
-        $groupNumbers = $this->_groupNumbers;
-        $groupNumber = reset($groupNumbers);
-        $min = $groupNumber->length;
-        foreach ($groupNumbers as $groupNumber)
-            $min = min($min,$groupNumber->length);
-        
-        return $this->_groupNumbersMinLength = $min;
-    }
-    
-    public function getGroupNumbersMaxLength():int
-    {
-        if ($this->_groupNumbersMaxLength!==null)
-            return $this->_groupNumbersMaxLength;
-        
-        $groupNumbers = $this->_groupNumbers;
-        $groupNumber = reset($groupNumbers);
-        $max = $groupNumber->length;
-        foreach ($groupNumbers as $groupNumber)
-            $max = max($max,$groupNumber->length);
-        
-        return $this->_groupNumbersMaxLength = $max;
-    }
-
-    public function setEmptyCells()
-    {
-        if ($this->getGroupNumbersMinLength()!==$this->getGroupNumbersMaxLength() OR
-            $this->getGroupNumbersMinLength()!==$this->_length)
-            return;
-
-        $pos = $this->_start-1;
-        if ($pos>=0)
-            $this->cells[$pos]->setEmpty();
-
-        $pos = $this->_start+$this->_length;
-        if ($pos<$this->cells->count)
-            $this->cells[$pos]->setEmpty();
-    }
-
-    public function setFullCells()
-    {
-        if ($this->prevIsEmpty() OR $this->prev->prev!==null AND $this->prev->prevIsEmpty())
-        {
-            $minLength = $this->getGroupNumbersMinLength();
-            if ($this->prevIsEmpty())
-                $minLength-=$this->length;
-            elseif ($this->prev->prev!==null AND $this->prev->prevIsEmpty())
-                $minLength-=($this->length+$this->prev->length);
-
-            $beg = $this->end+1;
-            for ($i=0; $i<$minLength; $i++)
-                $this->cells[$beg+$i]->setFull();
-        }
-
-        if ($this->nextIsEmpty() OR $this->next->next!==null AND $this->next->nextIsEmpty())
-        {
-            $minLength = $this->getGroupNumbersMinLength();
-            if ($this->nextIsEmpty())
-                $minLength-=$this->length;
-            elseif ($this->next->next!==null AND $this->next->nextIsEmpty())
-                $minLength-=($this->length+$this->next->length);
-
-            $beg = $this->start-1;
-            for ($i=0; $i<$minLength; $i++)
-                $this->cells[$beg-$i]->setFull();
-        }
-
-        if ($this->prevIsUnknown() AND $this->prevHasEmpty())
-        {
-            $minLength = $this->getGroupNumbersMinLength();
-            $minLength-=($this->prev->length-1+$this->length);
-            $beg = $this->end+1;
-            for ($i=0; $i<$minLength; $i++)
-                $this->cells[$beg+$i]->setFull();
-        }
-
-        if ($this->nextIsUnknown() AND $this->nextHasEmpty())
-        {
-            $minLength = $this->getGroupNumbersMinLength();
-            $minLength-=($this->next->length-1+$this->length);
-            $beg = $this->start-1;
-            for ($i=0; $i<$minLength; $i++)
-                $this->cells[$beg-$i]->setFull();
-        }
-    }
-
+	
     public function deleteGroupNumbers()
     {
         //удаляем числа, не соответствующие данной группе, обходя клетки с левой и справой стороны до текущей группы
@@ -196,23 +133,53 @@ class FullGroup extends EmptyGroup
         foreach($this->_groupNumbers as $key=>$groupNumber)
         {
             //удаляем те числа длина которых меньше длины текущей группы
-            if ($groupNumber->length<$this->length OR
+            if ($groupNumber->getLength()<$this->_length OR
                 //или длина больше длины текущей группы, но между этой группой крестики
-                $groupNumber->length>$this->length AND $this->nextIsEmpty() AND $this->prevIsEmpty())
+                $groupNumber->getLength()>$this->_length AND $this->nextIsEmpty() AND $this->prevIsEmpty())
                     $this->unsetGroupNumber($key);
         }
 
+		//удаляем числа если длина группы получается больше
+		if ($this->prevIsEmpty())
+		{
+			foreach($this->_groupNumbers as $key=>$groupNumber)
+			{
+				$ind = $this->_start+$groupNumber->getLength();
+				if ($ind>=$this->_cells->getCount())
+					continue;
+
+				if ($this->cells[$ind]->isFull())
+					$this->unsetGroupNumber($key);
+			}
+		}
+		
+		//удаляем числа если длина группы получается больше
+		if ($this->nextIsEmpty())
+		{
+			foreach($this->_groupNumbers as $key=>$groupNumber)
+			{
+				$ind = $this->_end-$groupNumber->getLength();
+				if ($ind<0)
+					continue;
+				
+				if ($this->cells[$ind]->isFull())
+					$this->unsetGroupNumber($key);
+			}
+		}
+			
+		
         if (count($this->_groupNumbers)==1)
         {
             $number = $this->numbers[key($this->_groupNumbers)];
-            $number->setPos('max',$this->start+$number->length-1);
-            $number->setPos('min',$this->end-$number->length+1);
+            $number->setPos('max',$this->start+$number->getLength()-1);
+            $number->setPos('min',$this->end-$number->getLength()+1);
         }
 
         return $this->_groupNumbers;
     }
 
     //удаляет возможные числа слева или справа
+	
     public function deleteGroupNumbersOnBound(&$minInd,$boundType)
     {
         if ($boundType=='min')
@@ -261,6 +228,7 @@ class FullGroup extends EmptyGroup
             $minInd = $ind;
         }
     }
+	
 
     public function deleteGroupNumbersFromSideCell($side='left')
     {
@@ -306,9 +274,9 @@ class FullGroup extends EmptyGroup
 
             while (true) {
 
-                $currLength = $numbers[$currNum]->length;
+                $currLength = $numbers[$currNum]->getLength();
                 //если текущее число меньше длины текущей группы
-                if ($currLength<$groups[$i]->length) {
+                if ($currLength<$groups[$i]->getLength()) {
                     //удаляем число в текущем объекте группы
                     $this->numbers[$currNum]->setPos($max,$groups[$i]->$start-2*$step);
                     $this->unsetGroupNumber($currNum);
@@ -323,7 +291,7 @@ class FullGroup extends EmptyGroup
                     $fullLength = $cells->getFullLength($groupStart, $currLength, $rightDir);
 
                     $begPos = $groups[$i]->$start + $step * ($fullLength - 1);
-                    $i = $cells[$begPos]->group->ind;
+                    $i = $cells[$begPos]->getGroup()->getInd();
 
                     if ($fullLength < $currLength) {
                         $fullLength = $cells->getFullLength($begPos, $currLength, $leftDir);
@@ -350,4 +318,60 @@ class FullGroup extends EmptyGroup
             $currNum+=$step;
         }
     }
+	
+	public function deleteUnknownGroupNumbers()
+	{
+		$groupNumber = reset($this->_groupNumbers);
+		$currBegInd = $groupNumber->getInd();
+		$currLength = $groupNumber->getLength();
+		$group = $this->getNext();
+		while ($group!==null)
+		{
+			if (!$group->isUnknown())
+			{
+				$group = $group->getNext();
+				continue;
+			}
+			$groupNumbers = $group->getGroupNumbers();
+			if (count($groupNumbers))
+			{
+				$groupNumber = reset($groupNumbers);
+				$begInd = $groupNumber->getInd();
+				for ($i=$begInd; $i<$currBegInd; $i++)
+					$group->unsetGroupNumber($i);
+					
+				if ($currLength==$this->_length)
+					$group->unsetGroupNumber($currBegInd);
+			}
+			$group = $group->getNext();
+		}
+		
+		
+		$groupNumber = end($this->_groupNumbers);
+		$currBegInd = $groupNumber->getInd();
+		$currLength = $groupNumber->getLength();
+		$group = $this->getPrev();
+		while ($group!==null)
+		{
+			if (!$group->isUnknown())
+			{
+				$group = $group->getPrev();
+				continue;
+			}
+			
+			$groupNumbers = $group->getGroupNumbers();
+			if (count($groupNumbers))
+			{
+				$groupNumber = end($groupNumbers);
+				$endInd = $groupNumber->getInd();
+				for ($i=$endInd; $i>$currBegInd; $i--)
+					$group->unsetGroupNumber($i);
+					
+				if ($currLength==$this->_length)
+					$group->unsetGroupNumber($currBegInd);
+			}
+			$group = $group->getPrev();
+		}
+		
+	}
 }

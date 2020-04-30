@@ -7,33 +7,53 @@ use models\Section;
 
 class Test extends \Codeception\Test\Unit
 {
-    public function testResolveLine()
+    public function testSolveLine()
     {
-        $resolves = require 'tests/_data/lineResolves.php';
+        $solves = require 'tests/_data/lineSolves.php';
 
-        foreach($resolves as $key=>$resolve)
+        foreach($solves as $key=>$solve)
         {
-            if (array_key_exists(2, $resolve))
+            if (array_key_exists(2, $solve))
             {
-				$resolve[1] = str_replace(' ','',$resolve[1]);
-				$resolve[2] = str_replace(' ','',$resolve[2]);
+				$solve[1] = str_replace(' ','',$solve[1]);
+				$solve[2] = str_replace(' ','',$solve[2]);
 				
-                $this->checkResolveLine($key,$resolve[0],$resolve[1],false,$resolve[2]);
-                $this->checkResolveLine($key,$resolve[0],$resolve[1],true,$resolve[2]);
+                $this->checkSolveLine($key,$solve[0],$solve[1],false,$solve[2]);
+                $this->checkSolveLine($key,$solve[0],$solve[1],true,$solve[2]);
             }
         }
     }
 	
-    private function checkResolveLine($ind,$numbers,$cellsStr,$isMirror,$result)
-    {
-        $model = new Line($ind,$numbers,$cellsStr,false,null,$isMirror);
-        if ($model->resolveTest($cellsStr))
-			$newCells = $model->getCellsView();
+    private function checkSolveLine($ind,$numbers,$cellsStr,$isMirror,$result)
+    {			
+        $line = new Line($ind,$numbers,$cellsStr,false,null,$isMirror);
+		
+		$numView = $line->getNumbers()->getLengthView();
+        
+		if ($line->trySolveTest())
+			$newCells = $line->getCellsView();
 		else
 			$newCells = 'error';
 			
+		if ($newCells=='error' AND $result!='error')
+		{
+			$newline = new Line($ind,$numbers,$cellsStr,false,null,$isMirror);
+			$newline->solveTest();
+		}
+		
+		if ($isMirror)
+		{
+			if ($result!='error')
+				$result = strrev($result);
+			$cellsStr = strrev($cellsStr);
+		}
+			
 		$begMess = '';
-		$message = 'message: '.$ind.' '.$cellsStr.'->'.$newCells;
+		$message = 'message: '.$ind.PHP_EOL.
+						$numView.PHP_EOL.
+						$cellsStr.PHP_EOL.
+						$result.' is correct'.PHP_EOL.
+						$newCells.' no correct';
 		if ($isMirror)
 			$begMess = 'MIRROR';
 		expect($begMess.' '.$message,$newCells)->equals($result);

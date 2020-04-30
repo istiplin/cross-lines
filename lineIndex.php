@@ -1,18 +1,18 @@
 <?php
     include 'vendor/autoload.php';
 
-    $dataName = 'lineResolves.php';
+    $dataName = 'lineSolves.php';
     $datas = require 'tests/_data/'.$dataName;
 
-    //$lineInd = 400;
-	//$lineInd = 68;
-	$lineInd = 53;
-
+	$lineInd = 160;
+	
     $data = $datas[$lineInd];
 
     $isMirror = false;
 
+	$data[1] = str_replace(' ','',$data[1]);
+	
     $line = new models\Line($lineInd,$data[0],$data[1],false,null,$isMirror);
-	echo $line->getCells()->getData().'<br>';
-    $line->resolve();
-    echo $line->getCells()->getData();
+	echo $line->getView().'<br>';
+    $line->solveTest(1,1);
+    echo $line->getView().'<br>';

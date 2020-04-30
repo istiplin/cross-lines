@@ -3,24 +3,41 @@ namespace models;
 
 use \sys\BaseObject;
 
-//класс для работы с одной из линий японского кроссворда
-class Field extends BaseObject
+//класс для работы с полем японского кроссворда, где оно разгадывается
+abstract class Field extends BaseObject
 {
     public $name;
 
-    private $_horLines = [];
-    private $_vertLines = [];
+    public $_horLines = [];
+    public $_vertLines = [];
     
-    private $_width;
-    private $_height;
+    public $_width;
+    public $_height;
 	
-	private $_isChange = true;
+	
     private $_cellsArr = [];
 	private $_unknownCellsArr = [];
 	private $_unknownCellsCount = 0;
 	
 	public $duration;
 	public $beginTime;
+	
+	private $_horNums;
+	private $_vertNums;
+	
+	private $_solveLinesByNumbers = [];
+	private $_solveLinesByGroups = [];
+	
+	private $_solveLines = [];
+	
+	public $isTest = false;
+	public $testCells=[];
+
+	public $t = [];
+	
+	protected $_isChange = true;
+	
+	public $maxDuration = 0;
 
     public function __construct($horNums,$vertNums,$cellsStrArr=null,$name=null)
     {
@@ -35,20 +52,18 @@ class Field extends BaseObject
         for ($i=0; $i<$this->_height; $i++)
 		{
 			$horCells = $this->getHorCells($i,$cellsStrArr);
-            $this->_horLines[$i] = new Line($i,$horNums[$i],$horCells,true,$this);
+			$line = new Line($i,$horNums[$i],$horCells,true,$this);
+            $this->_horLines[$i] = $line;
+			$this->addSolveLine($line);
 		}
 
         for ($i=0; $i<$this->_width; $i++)
 		{
 			$vertCells = $this->getVertCells($i,$cellsStrArr);
-            $this->_vertLines[$i] = new Line($i,$vertNums[$i],$vertCells,false,$this);
+			$line = new Line($i,$vertNums[$i],$vertCells,false,$this);
+            $this->_vertLines[$i] = $line;
+			$this->addSolveLine($line);
 		}
-        
-        for ($i=0; $i<$this->_height; $i++)
-            $this->_horLines[$i]->crossLines = $this->_vertLines;
-        
-        for ($i=0; $i<$this->_width; $i++)
-            $this->_vertLines[$i]->crossLines = $this->_horLines;
     }
 	
 	private function trimCellsStrArr($value)
@@ -81,52 +96,16 @@ class Field extends BaseObject
 		}
 	}
 	
-	public function __clone()
-	{
-	    $this->_isChange = true;
-		$this->_cellsArr = [];
-		$this->_unknownCellsArr = [];
-		$this->_unknownCellsCount = 0;
-		
-        for ($i=0; $i<$this->_height; $i++)
-		{
-			$numbersList = $this->_horLines[$i]->getNumbersList();
-			$cellsStr = $this->_horLines[$i]->getCells()->getData();
-            $this->_horLines[$i] = new Line($i,$numbersList,$cellsStr,true,$this);
-		}
-        
-        for ($i=0; $i<$this->_width; $i++)
-		{
-			$numbersList = $this->_vertLines[$i]->getNumbersList();
-			$cellsStr = $this->_vertLines[$i]->getCells()->getData();
-            $this->_vertLines[$i] = new Line($i,$numbersList,$cellsStr,false,$this);
-		}
-        
-        for ($i=0; $i<$this->_height; $i++)
-            $this->_horLines[$i]->crossLines = $this->_vertLines;
-        
-        for ($i=0; $i<$this->_width; $i++)
-            $this->_vertLines[$i]->crossLines = $this->_horLines;
-			
-	}
-    
-	private function getCellInd(int $x,int $y)
-	{
-		return $y*$this->_width+$x;
-	}
+	abstract public function addSolveLine($line);
+	abstract public function addSolveLineByNumbers($line);
 	
-	private function getCellCoord(int $ind)
+	public function addUnknownCell($cell)
 	{
-		$x = $ind%$this->_width;
-		$y = (int)($ind/$this->_width);
-		return [$x,$y];
-	}
-	
-	private function addUnknownCell($ind,$cell)
-	{
-		$this->_unknownCellsArr[$ind]=$cell;
-		$this->_unknownCellsCount++;
-		$cell->fieldInd = $ind;
+		if ($cell->isUnknown())
+		{
+			$this->_unknownCellsArr[$cell->getId()]=$cell;
+			$this->_unknownCellsCount++;
+		}
 	}
 	
 	public function deleteUnknownCell($ind)
@@ -150,13 +129,11 @@ class Field extends BaseObject
 		if (isset($this->_cellsArr[$y][$x]))
 			return $this->_cellsArr[$y][$x];
 			
-		$cell = new Cell($this);
+		$cell = new Cell($x,$y,$this);
+		
 		$this->_cellsArr[$y][$x] = $cell;
-		if ($cell->isUnknown())
-		{
-			$cellInd = $this->getCellInd($x,$y);
-			$this->addUnknownCell($cellInd,$cell);
-		}
+		$this->addUnknownCell($cell);
+		
 		return $this->_cellsArr[$y][$x] = $cell;
 	}
 	
@@ -167,151 +144,143 @@ class Field extends BaseObject
 		return $this->createCell($line->ind,$ind,$line);
     }
     
+	public function getWidth()
+	{
+		return $this->_width;
+	}
+	
     public function sizeView()
     {
         return $this->_width.'X'.$this->_height;
     }
-
-    public function resolveByNumbers(): bool
-    {
-        $isChange = true;
-        while($isChange)
-        {
-            $isChange = false;
-
-            for ($i=0; $i<$this->_height; $i++)
-            {
-                if (!$this->_horLines[$i]->isChangeByNumbers)
-                    continue;
-
-                $this->_isChange = true;
-                $isChange = true;
-                if (!$this->_horLines[$i]->resolveByNumbers())
-                    return false;
-            }
-			
-            for ($i=0; $i<$this->_width; $i++)
-            {
-                if (!$this->_vertLines[$i]->isChangeByNumbers)
-                    continue;
-
-                $this->_isChange = true;
-                $isChange = true;
-                if (!$this->_vertLines[$i]->resolveByNumbers())
-                    return false;
-            }
-        }
-        return true;
-    }
-
-    public function resolveByGroups(): bool
-    {
-        $isChange = true;
-        while($isChange)
-        {
-            $isChange = false;
-
-            for ($i=0; $i<$this->_height; $i++)
-            {
-                if (!$this->_horLines[$i]->isChangeByGroups)
-                    continue;
-
-                $this->_isChange = true;
-                $isChange = true;
-                if (!$this->_horLines[$i]->resolveByGroups())
-                    return false;
-            }
-
-            for ($i=0; $i<$this->_width; $i++)
-            {
-                if (!$this->_vertLines[$i]->isChangeByGroups)
-                    continue;
-
-                $this->_isChange = true;
-                $isChange = true;
-                if (!$this->_vertLines[$i]->resolveByGroups())
-                    return false;
-            }
-        }
-        return true;
-    }
-
-	public function resolve($isClone=true): bool
+	
+	
+	abstract protected function solveLines(): bool;
+	
+	public function timeIsUp(): bool
+	{
+		$this->duration = microtime(true) - $this->beginTime;
+		if ($this->maxDuration)
+			return $this->duration>=$this->maxDuration;
+		return false;
+	}
+	
+	public function solve(): bool
 	{
 		$this->beginTime = microtime(true);
 		
 		if ($this->getUnknownCellsCount()==0)
 		{
-			$this->duration = microtime(true) - $this->beginTime;
+			$this->timeIsUp();
 			return true;
 		}
 
         while ($this->_isChange) {
-            while ($this->_isChange) {
-
-                $this->_isChange = false;
-
-                if (!$this->resolveByNumbers())
-                    return false;
-
-                if ($this->getUnknownCellsCount() == 0) {
-                    $this->duration = microtime(true) - $this->beginTime;
-                    return true;
-                }
-
-                if (!$this->resolveByGroups())
-                    return false;
-
-                if ($this->getUnknownCellsCount() == 0) {
-                    $this->duration = microtime(true) - $this->beginTime;
-                    return true;
-                }
-            }
-            if ($isClone)
-                $this->resolveByClone();
+			if ($this->timeIsUp())
+				return !$this->isTest;
+		
+			if (!$this->solveLines())
+				return false;
+			
+            $this->trySolve();
         }
 		
-		
-		$this->duration = microtime(true) - $this->beginTime;
+		$this->timeIsUp();
 		return true;
 	}
 
-	public function resolveByClone(): bool
+	private function clearTestCells()
 	{
-		$isResolve = false;
-		foreach($this->_unknownCellsArr as $ind=>$unknownCell)
-		{
-			//if (microtime(true) - $this->beginTime>5)
-			//	break;
-			
-			$field = clone $this;
-			$field->getUnknownCell($ind)->setFull();
-			if (!$field->resolve(false))
-			{
-				$this->_unknownCellsArr[$ind]->setEmpty();
-                $this->_isChange = true;
-				return $isResolve = true;
-				continue;
-			}
-			else
-				$this->_unknownCellsArr[$ind]->unknownCountByFull = $field->getUnknownCellsCount();
-			
-			$field = clone $this;
-			$field->getUnknownCell($ind)->setEmpty();
-			if (!$field->resolve(false))
-			{
-				$this->_unknownCellsArr[$ind]->setFull();
-                $this->_isChange = true;
-				return $isResolve = true;
-				continue;
-			}
-			else
-				$this->_unknownCellsArr[$ind]->unknownCountByEmpty = $field->getUnknownCellsCount();
-			
-		}
-		return $isResolve;
+		foreach($this->testCells as $cell)
+			$cell->setUnknown();
+		$this->isTest = false;
+		
+		$this->testCells = [];
 	}
-
+	
+	private function trySolveLines($trialCell):bool
+	{
+		$this->isTest = true;
+		$trialCell->setFull();
+		$this->_isChange = true;
+		if (!$this->solveLines())
+		{
+			$this->clearTestCells();
+			if ($this->timeIsUp())
+			{
+				$trialCell->setUnknown();
+				return true;
+			}
+			$trialCell->setEmpty();
+			$this->_isChange = true;
+			
+			return true;
+		}
+		else
+		{
+			if ($this->_unknownCellsCount==0)
+				return true;
+			$this->clearTestCells();
+		}
+		return false;
+	}
+	
+	//разгадывает кроссворд методом проб и ошибок
+	private function trySolve()
+	{
+		foreach($this->_unknownCellsArr as $cell)
+		{
+			if ($this->timeIsUp())
+				return;
+			if (
+				$cell->leftIsEmpty() AND $cell->upIsEmpty()
+				OR $cell->leftIsEmpty() AND $cell->downIsEmpty()
+				OR $cell->rightIsEmpty() AND $cell->upIsEmpty() 
+				OR $cell->rightIsEmpty() AND $cell->downIsEmpty()
+				OR $cell->leftIsEmpty() OR $cell->rightIsEmpty() OR $cell->upIsEmpty() OR $cell->downIsEmpty()
+			)
+			{
+				if ($this->trySolveLines($cell))
+					return;
+			}
+		}
+	}
+	
+	public function getCells()
+	{
+		$cells=[];
+        for ($y=0; $y<$this->_height; $y++)
+        {
+            for($x=0; $x<$this->_width; $x++)
+                $cells[$y][$x]=$this->_cellsArr[$y][$x]->state;
+        }
+		return $cells;
+	}
+	
+	public function getHorNums()
+	{
+		if ($this->_horNums!==null)
+			return $this->_horNums;
+			
+		$this->_horNums = [];
+		for ($i=0; $i<$this->_height; $i++)
+			$this->_horNums[] = $this->_horLines[$i]->getNumbers()->getLengthArray();
+		
+		return $this->_horNums;
+	}
+	
+	public function getVertNums()
+	{
+		if ($this->_vertNums!==null)
+			return $this->_vertNums;
+			
+		$this->_vertNums = [];
+		for ($i=0; $i<$this->_width; $i++)
+			$this->_vertNums[] = $this->_vertLines[$i]->getNumbers()->getLengthArray();
+		
+		return $this->_vertNums;
+	}
+	
     public function getView()
     {
         $view = '<br>';
@@ -328,10 +297,9 @@ class Field extends BaseObject
 	public function unknownCellsArrView()
 	{
 		echo '(x,y):<br>';
-		foreach($this->_unknownCellsArr as $ind=>$unknownCell)
+		foreach($this->_unknownCellsArr as $unknownCell)
 		{
-			$coord = $this->getCellCoord($ind);
-			echo "({$coord[0]},{$coord[1]})<br>";
+			echo "({$unknownCell->getX()},{$unknownCell->getY()})<br>";
 			echo "&nbsp;&nbsp;&nbsp;&nbsp;BY FULL:{$unknownCell->unknownCountByFull};<br>";
 			echo "&nbsp;&nbsp;&nbsp;&nbsp;BY EMPTY:{$unknownCell->unknownCountByEmpty};<br>";
 		}

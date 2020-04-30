@@ -11,13 +11,16 @@ class CellData extends BaseObject
 	private $_cell;
     private $_ind;	//номер индекса
     
-    private $_line;
     private $_cells;
+	private $_line;
+	private $_field;
+	private $_numbers;
+	 
     
     private $_prev;
     private $_next;
 
-    public $_group;
+    private $_group;
 	
 	public function __construct($ind,$cell,$cells)
 	{
@@ -54,6 +57,8 @@ class CellData extends BaseObject
     {
         $this->_cells = $cells;
         $this->_line = $cells->getLine();
+		$this->_field = $this->_line->getField();
+		$this->_numbers = $this->_line->getNumbers();
     }
 
 	public function getCells()
@@ -88,6 +93,11 @@ class CellData extends BaseObject
     }
 	
 	
+
+	public function getState()
+	{
+		return $this->_cell->getState();
+	}
 	
     public function setFull()
     {
@@ -99,14 +109,17 @@ class CellData extends BaseObject
         $this->_cell->setEmpty();
     }
 	
-	public function getState()
-	{
-		return $this->_cell->getState();
-	}
-	
 	public function setState($value)
 	{
 		$this->_cell->setState($value);
+	}
+	
+	public function setIsChange($state,$oldState)
+	{
+		if ($this->_field)
+			$this->_field->addSolveLine($this->_line);
+		
+		$this->_line->decrUnknownCount($this->_ind,$oldState,$state);
 	}
 
 	public function setFieldInd($value)
