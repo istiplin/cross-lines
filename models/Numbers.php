@@ -22,13 +22,26 @@ class Numbers extends BaseObject implements \ArrayAccess
     {
 		$this->_data = $data;
 		$this->setLine($line);
-        $this->resetList();
+        $this->setList();
     }
+	
+	public function __destruct()
+	{
+		$this->unsetList();
+		$this->unsetLine();
+		$this->_data = null;
+	}
 	
 	public function setLine(Line $value)
 	{
 		$this->_line = $value;
 		$this->_field = $value->getField();
+	}
+	
+	private function unsetLine()
+	{
+		$this->_field = null;
+		$this->_line = null;
 	}
     
 	private function resetList()
@@ -51,12 +64,26 @@ class Numbers extends BaseObject implements \ArrayAccess
             $elem = $this->_list[$i];
         }
     }
+	
+	private function unsetList()
+	{
+		for($i=0; $i<$this->_count; $i++)
+			$this->_list[$i] = null;
+		$this->_list = null;
+	}
     
 	public function setCells($value)
 	{
 		$this->_cells = $value;
 		for ($i=0; $i<$this->_count; $i++)
 			$this->_list[$i]->cells = $value;
+	}
+	
+	public function unsetCells()
+	{
+		for ($i=0; $i<$this->_count; $i++)
+			$this->_list[$i]->cells = null;
+		$this->_cells = null;
 	}
 	
 	public function setGroups($value)
@@ -192,23 +219,23 @@ class Numbers extends BaseObject implements \ArrayAccess
     
     public function getLengthView(array $boldKeys=null)
     {
-		$view = '';
+	$view = '';
         for ($i=0; $i<$this->_count; $i++)
-		{
-			if ($boldKeys AND in_array($i,$boldKeys))
-				$view.='<b>'.$this->_list[$i]->length.'</b>|';
-			else
-				$view.=$this->_list[$i]->length.'|';
-		}
-		return $view;
+        {
+            if ($boldKeys AND in_array($i,$boldKeys))
+                $view.='<b>'.$this->_list[$i]->length.'</b>|';
+            else
+                $view.=$this->_list[$i]->length.'|';
+        }
+	return $view;
     }
 	
-	public function getLengthArray()
-	{
-		$lengthArr = [];
-		for($i=0; $i<$this->_count; $i++)
-			$lengthArr[$i] = $this->_list[$i]->getLength();
-			
-		return $lengthArr;
-	}
+    public function getLengthArray()
+    {
+        $lengthArr = [];
+        for($i=0; $i<$this->_count; $i++)
+            $lengthArr[$i] = $this->_list[$i]->getLength();
+
+        return $lengthArr;
+    }
 }

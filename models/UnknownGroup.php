@@ -140,27 +140,27 @@ class UnknownGroup extends EmptyGroup
 		
     }
 	
-	public function setFullCells()
-	{
+    public function setFullCells()
+    {
 
-	}
-	
-	public function solveByClone()
-	{
-		if ($this->prevIsFull() AND $this->nextIsFull())
-		{
-			$cellList = $this->_cells->getList();
-			if ($this->_length==1 AND $cellList[$this->_start]->isUnknown())
-			{
-				//echo $this->_line->isHorizontal.','.$this->_line->ind.','.$this->_start.'<br>';
-				
-				$line = clone $this->_line;
-				$line->getCells()->setEmptyStates($this->_start);
-				
-				if (!$line->trySolveTest())
-					$this->_cells->setFullStates($this->_start);
-			}	
-		}
-	}
+    }
+
+    public function solveByClone()
+    {
+        if ($this->prevIsFull() AND $this->nextIsFull())
+        {
+            $cellList = $this->_cells->getList();
+            if ($this->_length==1 AND $cellList[$this->_start]->isUnknown())
+            {
+                //echo $this->_line->isHorizontal.','.$this->_line->ind.','.$this->_start.'<br>';
+
+                $line = clone $this->_line;
+                $line->getCells()->setEmptyStates($this->_start);
+
+                if (!$line->trySolveTest())
+                    $this->_cells->setFullStates($this->_start);
+            }	
+        }
+    }
 	
 }

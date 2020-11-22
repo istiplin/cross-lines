@@ -3,18 +3,18 @@ namespace models;
 
 use \sys\BaseObject;
 
-//Êëàññ, â êîòîðîì õðàíÿòñÿ äàííûå êëåòêè, ÿâëÿþùèéñÿ îáúåêòîì êëàññà Cell. 
-//Êàæäàÿ êëåòêà, ÿâëÿþùàÿñÿ îáúåêòîì êëàññà Cell, èìååò 2 îáúåêòà òåêóùåãî êëàññà.
-//Êàæäûé îáúåêò òåêóùåãî êëàññà ñîîòâåòñòâóåò ñâîåé îðèåíòàöèè: ãîðèçîíòàëüíàÿ èëè âåðòèêàëüíàÿ
+//ÐšÐ»Ð°ÑÑ, Ð² ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð¼ Ñ…Ñ€Ð°Ð½ÑÑ‚ÑÑ Ð´Ð°Ð½Ð½Ñ‹Ðµ ÐºÐ»ÐµÑ‚ÐºÐ¸, ÑÐ²Ð»ÑÑŽÑ‰Ð¸Ð¹ÑÑ Ð¾Ð±ÑŠÐµÐºÑ‚Ð¾Ð¼ ÐºÐ»Ð°ÑÑÐ° Cell. 
+//ÐšÐ°Ð¶Ð´Ð°Ñ ÐºÐ»ÐµÑ‚ÐºÐ°, ÑÐ²Ð»ÑÑŽÑ‰Ð°ÑÑÑ Ð¾Ð±ÑŠÐµÐºÑ‚Ð¾Ð¼ ÐºÐ»Ð°ÑÑÐ° Cell, Ð¸Ð¼ÐµÐµÑ‚ 2 Ð¾Ð±ÑŠÐµÐºÑ‚Ð° Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ ÐºÐ»Ð°ÑÑÐ°.
+//ÐšÐ°Ð¶Ð´Ñ‹Ð¹ Ð¾Ð±ÑŠÐµÐºÑ‚ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ ÐºÐ»Ð°ÑÑÐ° ÑÐ¾Ð¾Ñ‚Ð²ÐµÑ‚ÑÑ‚Ð²ÑƒÐµÑ‚ ÑÐ²Ð¾ÐµÐ¹ Ð¾Ñ€Ð¸ÐµÐ½Ñ‚Ð°Ñ†Ð¸Ð¸: Ð³Ð¾Ñ€Ð¸Ð·Ð¾Ð½Ñ‚Ð°Ð»ÑŒÐ½Ð°Ñ Ð¸Ð»Ð¸ Ð²ÐµÑ€Ñ‚Ð¸ÐºÐ°Ð»ÑŒÐ½Ð°Ñ
 class CellData extends BaseObject
 {
-	private $_cell;
-    private $_ind;	//íîìåð èíäåêñà
+    private $_cell;
+    private $_ind;	//Ð½Ð¾Ð¼ÐµÑ€ Ð¸Ð½Ð´ÐµÐºÑÐ°
     
     private $_cells;
-	private $_line;
-	private $_field;
-	private $_numbers;
+    private $_line;
+    private $_field;
+    private $_numbers;
 	 
     
     private $_prev;
@@ -22,28 +22,28 @@ class CellData extends BaseObject
 
     private $_group;
 	
-	public function __construct($ind,$cell,$cells)
-	{
-		$this->_ind = $ind;
-		$this->setCells($cells);
-		$this->setCell($cell);
-	}
-	
-	public function setCell(Cell $cell)
-	{
-		$this->_cell = $cell;
-		$cell->setCellData($this,$this->_line->isHorizontal);
-	}
+    public function __construct($ind,$cell,$cells)
+    {
+        $this->_ind = $ind;
+        $this->setCells($cells);
+        $this->setCell($cell);
+    }
 
-	public function getLine()
-	{
-		return $this->_line;
-	}
-	
-	public function getInd()
-	{
-		return $this->_ind;
-	}
+    public function setCell(Cell $cell)
+    {
+        $this->_cell = $cell;
+        $cell->setCellData($this);
+    }
+
+    public function getLine()
+    {
+        return $this->_line;
+    }
+
+    public function getInd()
+    {
+        return $this->_ind;
+    }
 	
     public function getDist($pos): int
     {
@@ -57,14 +57,14 @@ class CellData extends BaseObject
     {
         $this->_cells = $cells;
         $this->_line = $cells->getLine();
-		$this->_field = $this->_line->getField();
-		$this->_numbers = $this->_line->getNumbers();
+        $this->_field = $this->_line->getField();
+        $this->_numbers = $this->_line->getNumbers();
     }
 
-	public function getCells()
-	{
-		return $this->_cells;
-	}
+    public function getCells()
+    {
+            return $this->_cells;
+    }
 	
     public function getPrev(): ?Cell
     {
@@ -83,21 +83,27 @@ class CellData extends BaseObject
     public function setPrev($prev)
     {
         $this->_prev = $prev;
-        if ($prev!==null)
+        if ($this->_prev!==null)
             $prev->setNext($this);
     }
+	
+	public function unsetPrev()
+	{
+		if ($this->_prev!==null)
+			$this->_prev->setNext(null);
+		$this->_prev = null;
+	}
 
+	
     public function setNext($next)
     {
         $this->_next = $next;
     }
 	
-	
-
-	public function getState()
-	{
-		return $this->_cell->getState();
-	}
+    public function getState()
+    {
+            return $this->_cell->getState();
+    }
 	
     public function setFull()
     {
@@ -109,33 +115,25 @@ class CellData extends BaseObject
         $this->_cell->setEmpty();
     }
 	
-	public function setState($value)
-	{
-		$this->_cell->setState($value);
-	}
-	
-	public function setIsChange($state,$oldState)
-	{
-		if ($this->_field)
-			$this->_field->addSolveLine($this->_line);
-		
-		$this->_line->decrUnknownCount($this->_ind,$oldState,$state);
-	}
+    public function setState($value)
+    {
+            $this->_cell->setState($value);
+    }
 
-	public function setFieldInd($value)
-	{
-		$this->_cell->fieldInd = $value;
-	}
-	
-	public function getFieldInd()
-	{
-		return $this->_cell->fieldInd;
-	}
-	
-	public function isUnknown($state=null):bool
-	{
-		return $this->_cell->isUnknown($state);
-	}
+    public function setFieldInd($value)
+    {
+            $this->_cell->fieldInd = $value;
+    }
+
+    public function getFieldInd()
+    {
+            return $this->_cell->fieldInd;
+    }
+
+    public function isUnknown($state=null):bool
+    {
+            return $this->_cell->isUnknown($state);
+    }
 	
     public function isFull($state=null):bool
     {

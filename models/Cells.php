@@ -10,136 +10,156 @@ class Cells extends BaseObject implements \ArrayAccess
     use TArrayAccess;
     
     private $_line;
-	private $_field;
-	private $_groups;
+    private $_field;
+    private $_groups;
 	
     private $_list;
     private $_count=0;
 
-	private $_data;
+    private $_data;
 
     public function __construct(string $data,Line $line)
     {
-		$this->_data = $data;
+        $this->_data = $data;
         $this->setLine($line);
-        $this->resetList();
-		$this->setGroups();
+        $this->setList();
+        $this->setGroups();
     }
 	
-	public function setLine(Line $value)
-	{
-		$this->_line = $value;
-		$this->_field = $value->getField();
-	}
+    public function __destruct()
+    {
+        $this->_groups = null;
+        $this->unsetList();
+        $this->unsetLine();
+        $this->_data = null;
+    }
 	
-	public function getLine(): Line
-	{
-		return $this->_line;
-	}
+    public function setLine(Line $value)
+    {
+        $this->_line = $value;
+        $this->_field = $value->getField();
+    }
 	
-	public function getField(): Field
-	{
-		return $this->_field;
-	}
+    public function unsetLine()
+    {
+        $this->_field = null;
+        $this->_line = null;
+    }
 	
-	private function setGroups()
-	{
-		if ($this->_groups!==null)
-			throw new \Exception('Error! '.__METHOD__.' $this->_groups is not null');
-		$this->_groups = new Groups($this);
-	}
+    public function getLine(): Line
+    {
+        return $this->_line;
+    }
 	
-	public function getGroups(): Groups
-	{
-		return $this->_groups;
-	}
+    public function getField(): Field
+    {
+        return $this->_field;
+    }
 	
-	public function getData($isViewChange=false,string $delimiter = '')
-	{
-		if ($this->_list===null)
-			return null;
-			
-		$oldData = $this->_data;
-		$this->_data = '';
+    private function setGroups()
+    {
+        if ($this->_groups!==null)
+            throw new \Exception('Error! '.__METHOD__.' $this->_groups is not null');
+        $this->_groups = new Groups($this);
+    }
+	
+    public function getGroups(): Groups
+    {
+        return $this->_groups;
+    }
+	
+    public function getData($isViewChange=false,string $delimiter = '')
+    {
+        if ($this->_list===null)
+            return null;
+
+        $oldData = $this->_data;
+        $this->_data = '';
         $data='';
         for ($i = 0; $i<$this->_count; $i++)
-		{
-			if (!$isViewChange OR $oldData[$i]==$this->_list[$i]->getState())
-				$data.=$this->_list[$i]->getState();
-			else
-				$data.='<b>'.$this->_list[$i]->getState().'</b>';
-			
-			$this->_data.=$this->_list[$i]->getState();
-			
-			if (strlen($delimiter) AND ($i+1)%10==0)
-				$data.= $delimiter;
-		}
+        {
+            if (!$isViewChange OR $oldData[$i]==$this->_list[$i]->getState())
+                $data.=$this->_list[$i]->getState();
+            else
+                $data.='<b>'.$this->_list[$i]->getState().'</b>';
+
+            $this->_data.=$this->_list[$i]->getState();
+
+            if (strlen($delimiter) AND ($i+1)%10==0)
+                $data.= $delimiter;
+        }
         return $data;
-	}
+    }
 	
     public function getElem($ind):CellData
     {
-		if (array_key_exists($ind,$this->_list))
-			return $this->_list[$ind];
+        if (array_key_exists($ind,$this->_list))
+            return $this->_list[$ind];
 	
-		$line = $this->getLine();
-        if ($this->_field!==null)
-            $cell = $this->_field->getCell($ind,$line);
-		
-		//для юнит-тестов
-		elseif ($this->_line->isHorizontal)
-			$cell = new Cell($ind,$line->ind);
-		//для юнит-тестов
-		else
-			$cell = new Cell($ind,$line->ind);
-			
-		return new CellData($ind,$cell,$this);
+        $line = $this->getLine();
+        $cell = new Cell($ind,$line->ind);
+
+        return new CellData($ind,$cell,$this);
     }
     
-	private function resetList()
-	{
-		$this->_list = null;
-		$this->setList();
-	}
+    private function resetList()
+    {
+        $this->_list = null;
+        $this->setList();
+    }
 	
     private function setList()
     {
-		if ($this->_list!==null)
-			throw new \Exception('Error! '.__METHOD__.' $this->_list is not null');
+        if ($this->_list!==null)
+            throw new \Exception('Error! '.__METHOD__.' $this->_list is not null');
 	
-		$this->_count = strlen($this->_data);
+        $this->_count = strlen($this->_data);
         $this->_line->setUnknownCount($this->_count);
-		$prevElem = null;
-		$this->_list = [];
+        $prevElem = null;
+        $this->_list = [];
         for($i=0; $i<$this->_count; $i++)
-		{
+        {
             $elem = $this->getElem($i);
-			$elem->setState($this->_data[$i]);
-			$elem->setPrev($prevElem);
-			$prevElem = $elem;
-			
-			$this->_list[$i] = $elem;
-		}
-		$prevElem->setNext(null);
+            $elem->setState($this->_data[$i]);
+            $elem->setPrev($prevElem);
+            $prevElem = $elem;
+
+            $this->_list[$i] = $elem;
+        }
+        $prevElem->setNext(null);
     }
 	
-	public function cloneList()
-	{
-		if ($this->_list===null)
-			throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
-		
-		$prevElem = null;
-		for($i=0; $i<$this->_count; $i++)
-		{
-			$elem = clone $this->_list[$i];
-			$elem->setField($this->_field);
-			$elem->setCells($this);
-			$elem->setPrev($prevElem);
-			$prevElem = $elem;
-			$this->_list[$i] = $elem;
-		}
-		$prevElem->setNext(null);
-	}
+    private function unsetList()
+    {
+        $this->_line->setUnknownCount(null);
+        for($i=0; $i<$this->_count; $i++)
+        {
+            $elem = $this->_list[$i];
+            $elem->unsetPrev();
+            $elem = null;
+
+            $this->_list[$i] = null;
+        }
+        $this->_list = null;
+    }
+
+    public function cloneList()
+    {
+        if ($this->_list===null)
+            throw new \Exception('Error! '.__METHOD__.' $this->_list is null');
+
+        $prevElem = null;
+        for($i=0; $i<$this->_count; $i++)
+        {
+            $elem = clone $this->_list[$i];
+            $elem->setField($this->_field);
+            $elem->setCells($this);
+            $elem->setPrev($prevElem);
+            $prevElem = $elem;
+            $this->_list[$i] = $elem;
+        }
+        $prevElem->setNext(null);
+    }
 
     //возвращает итоговую длину возможной закрашенной группы,
     //начиная с позиции $fullBegPos, пытаясь пройти  расстояние длиной $fullLength
@@ -210,7 +230,7 @@ class Cells extends BaseObject implements \ArrayAccess
     //начиная поиск с позиции $fullBegPos в направлении $direction
     public function getFullBegPos($fullBegPos, $fullLength, $direction): int
     {
-		$fullBegPos1 = $fullBegPos;
+        $fullBegPos1 = $fullBegPos;
 	
         $next = 1;
         $groupStart = 'groupStart';

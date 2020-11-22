@@ -3,46 +3,47 @@ namespace models;
 
 use \sys\BaseObject;
 
-//êëàññ äëÿ ðàáîòû ñ ïîëåì ÿïîíñêîãî êðîññâîðäà, ãäå îíî ðàçãàäûâàåòñÿ ïî îäíîâðåìåííî ïî 2-ì àëãîðèòìàì,
-//ò.å. êàæäàÿ ñòðîêà ðàçãàäûâàåòñÿ ñðàçó 2-ìÿ ìåòîäàìè ñ èñïîëüíîâàíèåì ÷èñåë è áëîêîâ.
-//Ðàáîòàåò ìåäëåííåé ÷åì FastField, íî çàòî èñïîëüçóåò ìåòîä, êîòîðûé èñïîëüçóåòñÿ â þíèò-òåñòàõ
+//ÐºÐ»Ð°ÑÑ Ð´Ð»Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ñ‹ Ñ Ð¿Ð¾Ð»ÐµÐ¼ ÑÐ¿Ð¾Ð½ÑÐºÐ¾Ð³Ð¾ ÐºÑ€Ð¾ÑÑÐ²Ð¾Ñ€Ð´Ð°, Ð³Ð´Ðµ Ð¾Ð½Ð¾ Ñ€Ð°Ð·Ð³Ð°Ð´Ñ‹Ð²Ð°ÐµÑ‚ÑÑ Ð¿Ð¾ Ð¾Ð´Ð½Ð¾Ð²Ñ€ÐµÐ¼ÐµÐ½Ð½Ð¾ Ð¿Ð¾ 2-Ð¼ Ð°Ð»Ð³Ð¾Ñ€Ð¸Ñ‚Ð¼Ð°Ð¼,
+//Ñ‚.Ðµ. ÐºÐ°Ð¶Ð´Ð°Ñ ÑÑ‚Ñ€Ð¾ÐºÐ° Ñ€Ð°Ð·Ð³Ð°Ð´Ñ‹Ð²Ð°ÐµÑ‚ÑÑ ÑÑ€Ð°Ð·Ñƒ 2-Ð¼Ñ Ð¼ÐµÑ‚Ð¾Ð´Ð°Ð¼Ð¸ Ñ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ½Ð¾Ð²Ð°Ð½Ð¸ÐµÐ¼ Ñ‡Ð¸ÑÐµÐ» Ð¸ Ð±Ð»Ð¾ÐºÐ¾Ð².
+//Ð Ð°Ð±Ð¾Ñ‚Ð°ÐµÑ‚ Ð¼ÐµÐ´Ð»ÐµÐ½Ð½ÐµÐ¹ Ñ‡ÐµÐ¼ FastField, Ð½Ð¾ Ð·Ð°Ñ‚Ð¾ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ Ð¼ÐµÑ‚Ð¾Ð´, ÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ð¹ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð² ÑŽÐ½Ð¸Ñ‚-Ñ‚ÐµÑÑ‚Ð°Ñ…
 class SlowField extends Field{
 
-	private $_solveLines = [];
-	
-	public function addSolveLineByNumbers($line)
-	{
-		$this->_solveLines[$line->id] = $line;
-	}
-	
-	public function addSolveLine($line)
-	{
-		$this->_solveLines[$line->id] = $line;
-	}
-	
-	public function delSolveLine($line)
-	{
-		unset($this->_solveLines[$line->id]);
-	}
-	
-	protected function solveLines():bool
-	{
-		$this->_isChange = false;
-		while (count($this->_solveLines)) 
-		{
-			$lines = $this->_solveLines;
-			$this->_solveLines = [];
-			
-			foreach($lines as $line)
-			{	
-                if (!$line->trySolveTest())
-				{
-					//$this->_solveLines = [];
+    /*
+    private $_solveLines = [];
+
+    public function addSolveLineByNumbers($line)
+    {
+        $this->_solveLines[$line->id] = $line;
+    }
+
+    public function addSolveLine($line)
+    {
+        $this->_solveLines[$line->id] = $line;
+    }
+
+    public function delSolveLine($line)
+    {
+        unset($this->_solveLines[$line->id]);
+    }
+     * 
+     */
+
+    protected function solveLines():bool
+    {
+        $solveLinesIds = $this->_solveLinesIds;
+        while($solveLinesIds)
+        {
+            if ($this->timeIsUp())
+                return !$this->isTest;
+
+            foreach ($solveLinesIds as $id)
+            {
+                if (!$this->solveLine($id)){
                     return false;
-				}
-			}
-			
-		}
-		return true;
-	}
+                }
+            }
+            $solveLinesIds = $this->_solveLinesIds;
+        }
+        return true;
+    }
 }

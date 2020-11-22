@@ -4,7 +4,7 @@
     $dataName = 'fieldSolves.php';
     $datas = require '../tests/_data/'.$dataName;
     
-    $fieldInd = 8;
+    $fieldInd = 7;
     
     $data = $datas[$fieldInd];
 
@@ -33,22 +33,23 @@
 	<div id='field'></div>
 	
 	<script type="text/javascript">
-		field = new Field('field',<?=json_encode($field->horNums)?>,<?=json_encode($field->vertNums)?>);
-		field.draw();
+            field = new Field('field',<?=json_encode($field->horNums)?>,<?=json_encode($field->vertNums)?>);
+            field.draw();
 
-		function solve()
-		{
-			$.ajax({
-				url: 'solve.php',
-				dataType: 'json',
-				method: 'POST',
-				data: {horNums:field.horNumsList,vertNums:field.vertNumsList,cells:field.cellsList},
-				success: function (data) {
-					field.redraw(data['cells']);
-					console.log('draw');
-				}
-			});
-		}
+            function solve()
+            {
+                $.ajax({
+                    url: 'solve.php',
+                    dataType: 'json',
+                    method: 'POST',
+                    data: {horNums:field.horNumsList,vertNums:field.vertNumsList,cells:field.cellsList},
+                    success: function (data) {
+                            field.redraw(data['cells']);
+                            console.log('draw');
+                            //console.log(data['cells']);
+                    }
+                });
+            }
 	</script>
 
 	</body>

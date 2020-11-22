@@ -107,7 +107,7 @@ class FullGroup extends EmptyGroup
             if ($minPos<=$this->_start AND $this->_end<=$maxPos)
                 $this->_groupNumbers[$i] = $this->numbers[$i];
         }
-		
+	
         if (count($this->_groupNumbers)===0)
             throw new \Exception('error in '.__CLASS__.' '.$this->_cells->getData().' line '.$this->line->ind.' numberGroup '.$this->ind.' this->_groupNumbers has count=0.');
     }
@@ -139,33 +139,33 @@ class FullGroup extends EmptyGroup
                     $this->unsetGroupNumber($key);
         }
 
-		//удаляем числа если длина группы получается больше
-		if ($this->prevIsEmpty())
-		{
-			foreach($this->_groupNumbers as $key=>$groupNumber)
-			{
-				$ind = $this->_start+$groupNumber->getLength();
-				if ($ind>=$this->_cells->getCount())
-					continue;
+        //удаляем числа если длина группы получается больше
+        if ($this->prevIsEmpty())
+        {
+            foreach($this->_groupNumbers as $key=>$groupNumber)
+            {
+                $ind = $this->_start+$groupNumber->getLength();
+                if ($ind>=$this->_cells->getCount())
+                    continue;
 
-				if ($this->cells[$ind]->isFull())
-					$this->unsetGroupNumber($key);
-			}
-		}
-		
-		//удаляем числа если длина группы получается больше
-		if ($this->nextIsEmpty())
-		{
-			foreach($this->_groupNumbers as $key=>$groupNumber)
-			{
-				$ind = $this->_end-$groupNumber->getLength();
-				if ($ind<0)
-					continue;
-				
-				if ($this->cells[$ind]->isFull())
-					$this->unsetGroupNumber($key);
-			}
-		}
+                if ($this->cells[$ind]->isFull())
+                    $this->unsetGroupNumber($key);
+            }
+        }
+
+        //удаляем числа если длина группы получается больше
+        if ($this->nextIsEmpty())
+        {
+            foreach($this->_groupNumbers as $key=>$groupNumber)
+            {
+                $ind = $this->_end-$groupNumber->getLength();
+                if ($ind<0)
+                    continue;
+
+                if ($this->cells[$ind]->isFull())
+                    $this->unsetGroupNumber($key);
+            }
+        }
 			
 		
         if (count($this->_groupNumbers)==1)
@@ -319,59 +319,59 @@ class FullGroup extends EmptyGroup
         }
     }
 	
-	public function deleteUnknownGroupNumbers()
-	{
-		$groupNumber = reset($this->_groupNumbers);
-		$currBegInd = $groupNumber->getInd();
-		$currLength = $groupNumber->getLength();
-		$group = $this->getNext();
-		while ($group!==null)
-		{
-			if (!$group->isUnknown())
-			{
-				$group = $group->getNext();
-				continue;
-			}
-			$groupNumbers = $group->getGroupNumbers();
-			if (count($groupNumbers))
-			{
-				$groupNumber = reset($groupNumbers);
-				$begInd = $groupNumber->getInd();
-				for ($i=$begInd; $i<$currBegInd; $i++)
-					$group->unsetGroupNumber($i);
-					
-				if ($currLength==$this->_length)
-					$group->unsetGroupNumber($currBegInd);
-			}
-			$group = $group->getNext();
-		}
-		
-		
-		$groupNumber = end($this->_groupNumbers);
-		$currBegInd = $groupNumber->getInd();
-		$currLength = $groupNumber->getLength();
-		$group = $this->getPrev();
-		while ($group!==null)
-		{
-			if (!$group->isUnknown())
-			{
-				$group = $group->getPrev();
-				continue;
-			}
-			
-			$groupNumbers = $group->getGroupNumbers();
-			if (count($groupNumbers))
-			{
-				$groupNumber = end($groupNumbers);
-				$endInd = $groupNumber->getInd();
-				for ($i=$endInd; $i>$currBegInd; $i--)
-					$group->unsetGroupNumber($i);
-					
-				if ($currLength==$this->_length)
-					$group->unsetGroupNumber($currBegInd);
-			}
-			$group = $group->getPrev();
-		}
-		
-	}
+    public function deleteUnknownGroupNumbers()
+    {
+        $groupNumber = reset($this->_groupNumbers);
+        $currBegInd = $groupNumber->getInd();
+        $currLength = $groupNumber->getLength();
+        $group = $this->getNext();
+        while ($group!==null)
+        {
+            if (!$group->isUnknown())
+            {
+                $group = $group->getNext();
+                continue;
+            }
+            $groupNumbers = $group->getGroupNumbers();
+            if (count($groupNumbers))
+            {
+                $groupNumber = reset($groupNumbers);
+                $begInd = $groupNumber->getInd();
+                for ($i=$begInd; $i<$currBegInd; $i++)
+                    $group->unsetGroupNumber($i);
+
+                if ($currLength==$this->_length)
+                    $group->unsetGroupNumber($currBegInd);
+            }
+            $group = $group->getNext();
+        }
+
+
+        $groupNumber = end($this->_groupNumbers);
+        $currBegInd = $groupNumber->getInd();
+        $currLength = $groupNumber->getLength();
+        $group = $this->getPrev();
+        while ($group!==null)
+        {
+            if (!$group->isUnknown())
+            {
+                $group = $group->getPrev();
+                continue;
+            }
+
+            $groupNumbers = $group->getGroupNumbers();
+            if (count($groupNumbers))
+            {
+                $groupNumber = end($groupNumbers);
+                $endInd = $groupNumber->getInd();
+                for ($i=$endInd; $i>$currBegInd; $i--)
+                    $group->unsetGroupNumber($i);
+
+                if ($currLength==$this->_length)
+                    $group->unsetGroupNumber($currBegInd);
+            }
+            $group = $group->getPrev();
+        }
+
+    }
 }

@@ -21,6 +21,11 @@ class Groups extends BaseObject implements \ArrayAccess
     {
         $this->setCells($cells);
     }
+	
+	public function __destruct()
+	{
+		$this->unsetCells();
+	}
 
     public function getList(): array
     {
@@ -36,6 +41,15 @@ class Groups extends BaseObject implements \ArrayAccess
 		$this->_field = $this->_line->getField();
 		$this->_numbers = $value->getNumbers();
 	}
+	
+	public function unsetCells()
+	{
+		$this->_numbers = null;
+		$this->_field = null;
+		$this->_line = null;
+		$this->_cells = null;
+	}
+	
 	
 	public function getLine(): Line
 	{
@@ -94,15 +108,27 @@ class Groups extends BaseObject implements \ArrayAccess
                 $elem->setEnd($i);
         }
     }
+	
+    public function unsetList()
+    {
+        $cells = $this->getCells();
+        $cellsCount = $cells->count;
+        for($i=0; $i<$cellsCount; $i++)
+                $cells[$i]->setGroup(null);
+
+        for ($i=0; $i<$this->_count; $i++)
+                $this->_list[$i]=null;
+        $this->_list = null;
+    }
     
-	private function deleteFullGroupNumbers()
-	{
+    private function deleteFullGroupNumbers()
+    {
         for($i=0; $i<$this->_count; $i++)
         {
             if ($this->_list[$i]->isFull())
                 $this->_list[$i]->deleteGroupNumbers();
         }
-		
+
         $minInd = null;
         for($i=0; $i<$this->_count; $i++)
         {
@@ -116,35 +142,35 @@ class Groups extends BaseObject implements \ArrayAccess
             if ($this->_list[$i]->isFull())
                 $this->_list[$i]->deleteGroupNumbersOnBound($maxInd,'max');
         }
-		
-	}
-	
-	private function deleteUnknownGroupNumbers()
-	{
+
+    }
+
+    private function deleteUnknownGroupNumbers()
+    {
         for($i=0; $i<$this->_count; $i++)
         {
             if ($this->_list[$i]->isFull())
                 $this->_list[$i]->deleteUnknownGroupNumbers();
         }
-	}
+    }
 	
     public function setGroupNumbers($isDetail=false)
     {
         for($i=0; $i<$this->_count; $i++)
-		{
-			if ($this->_list[$i]->isFull())
-				$this->_list[$i]->setGroupNumbers();
-		}
-		
-		//некоторые полученные числа удаляем
-		$this->deleteFullGroupNumbers();
-		//$this->deleteUnknownGroupNumbers();
-		
-		if ($isDetail)
-		{
-			$this->viewGroupNumbers();
-			$this->_numbers->viewBounds();
-		}
+        {
+            if ($this->_list[$i]->isFull())
+                $this->_list[$i]->setGroupNumbers();
+        }
+
+        //некоторые полученные числа удаляем
+        $this->deleteFullGroupNumbers();
+        //$this->deleteUnknownGroupNumbers();
+
+        if ($isDetail)
+        {
+            $this->viewGroupNumbers();
+            $this->_numbers->viewBounds();
+        }
     }
 
     public function setEmptyCells()
@@ -157,18 +183,18 @@ class Groups extends BaseObject implements \ArrayAccess
     {
         for($i=0; $i<$this->_count; $i++)
         {
-			$this->_list[$i]->setFullCells();
+            $this->_list[$i]->setFullCells();
         }
     }
 	
-	public function setStateCells($isView=false)
-	{
-		$this->setFullCells();
-		$this->setEmptyCells();
-		
-		if ($isView)
-			echo $this->_line->getView($isView).' group-<b>RESULT</b><br>';
-	}
+    public function setStateCells($isView=false)
+    {
+        $this->setFullCells();
+        $this->setEmptyCells();
+
+        if ($isView)
+            echo $this->_line->getView($isView).' group-<b>RESULT</b><br>';
+    }
 
     public function solve($isView=false, $isDetail=false)
     {
@@ -193,14 +219,14 @@ class Groups extends BaseObject implements \ArrayAccess
 		}
     }
 	
-	public function solveByClone()
-	{
+    public function solveByClone()
+    {
         for($i=0; $i<$this->_count; $i++)
         {
             if ($this[$i]->isUnknown())
                 $this[$i]->solveByClone();
         }
-	}
+    }
 
     public function viewGroupNumbers()
     {

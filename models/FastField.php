@@ -3,101 +3,101 @@ namespace models;
 
 use \sys\BaseObject;
 
-//êëàññ äëÿ ðàáîòû ñ ïîëåì ÿïîíñêîãî êðîññâîðäà, ãäå îíî ðàçãàäûâàåòñÿ ïî îòäåëüíûì àëãîðèòìàì,
-//ò.å. êàæäàÿ ñòðîêà ðàçãàäûâàåòñÿ ñíà÷àëà îäíèì àëãîðèòìîì - ñ èñïîëüçîâàíèåì òîëüêî ÷èñåë, 
-//ïîòîì äðóãèì - ñ ïîìîùüþ áëîêîâ. 
-//Ðàáîòàåò áûñòðåé, ÷åì SlowField
+//ÐºÐ»Ð°ÑÑ Ð´Ð»Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ñ‹ Ñ Ð¿Ð¾Ð»ÐµÐ¼ ÑÐ¿Ð¾Ð½ÑÐºÐ¾Ð³Ð¾ ÐºÑ€Ð¾ÑÑÐ²Ð¾Ñ€Ð´Ð°, Ð³Ð´Ðµ Ð¾Ð½Ð¾ Ñ€Ð°Ð·Ð³Ð°Ð´Ñ‹Ð²Ð°ÐµÑ‚ÑÑ Ð¿Ð¾ Ð¾Ñ‚Ð´ÐµÐ»ÑŒÐ½Ñ‹Ð¼ Ð°Ð»Ð³Ð¾Ñ€Ð¸Ñ‚Ð¼Ð°Ð¼,
+//Ñ‚.Ðµ. ÐºÐ°Ð¶Ð´Ð°Ñ ÑÑ‚Ñ€Ð¾ÐºÐ° Ñ€Ð°Ð·Ð³Ð°Ð´Ñ‹Ð²Ð°ÐµÑ‚ÑÑ ÑÐ½Ð°Ñ‡Ð°Ð»Ð° Ð¾Ð´Ð½Ð¸Ð¼ Ð°Ð»Ð³Ð¾Ñ€Ð¸Ñ‚Ð¼Ð¾Ð¼ - Ñ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ð½Ð¸ÐµÐ¼ Ñ‚Ð¾Ð»ÑŒÐºÐ¾ Ñ‡Ð¸ÑÐµÐ», 
+//Ð¿Ð¾Ñ‚Ð¾Ð¼ Ð´Ñ€ÑƒÐ³Ð¸Ð¼ - Ñ Ð¿Ð¾Ð¼Ð¾Ñ‰ÑŒÑŽ Ð±Ð»Ð¾ÐºÐ¾Ð². 
+//Ð Ð°Ð±Ð¾Ñ‚Ð°ÐµÑ‚ Ð±Ñ‹ÑÑ‚Ñ€ÐµÐ¹, Ñ‡ÐµÐ¼ SlowField
 class FastField extends Field{
 
-	private $_solveLinesByNumbers = [];
-	private $_solveLinesByGroups = [];
-	
-	public function addSolveLineByNumbers($line)
-	{
-		$this->_solveLinesByNumbers[$line->id] = $line;
-	}
-	
-	public function addSolveLine($line)
-	{
-		$this->_solveLinesByNumbers[$line->id] = $line;
-		$this->_solveLinesByGroups[$line->id] = $line;
-	}
+    private $_solveLinesByNumbers = [];
+    private $_solveLinesByGroups = [];
+
+    public function addSolveLineByNumbers($line)
+    {
+        $this->_solveLinesByNumbers[$line->id] = $line;
+    }
+
+    public function addSolveLine($line)
+    {
+        $this->_solveLinesByNumbers[$line->id] = $line;
+        $this->_solveLinesByGroups[$line->id] = $line;
+    }
 	
     private function solveLinesByNumbers(): bool
     {
-		while(count($this->_solveLinesByNumbers))
-		{
-			if ($this->timeIsUp())
-				return !$this->isTest;
-				
-			$this->_isChange = true;
-			$lines = $this->_solveLinesByNumbers;
-			$this->_solveLinesByNumbers = [];
-			foreach($lines as $line)
-			{
-				if ($this->timeIsUp())
-					return !$this->isTest;
-				
+        while(count($this->_solveLinesByNumbers))
+        {
+            if ($this->timeIsUp())
+                return !$this->isTest;
+
+            $this->_isChange = true;
+            $lines = $this->_solveLinesByNumbers;
+            $this->_solveLinesByNumbers = [];
+            foreach($lines as $line)
+            {
+                if ($this->timeIsUp())
+                    return !$this->isTest;
+
                 if (!$line->solveByNumbers())
-				{
-					$this->_solveLinesByNumbers = [];
-					$this->_solveLinesByGroups = [];
+                {
+                    $this->_solveLinesByNumbers = [];
+                    $this->_solveLinesByGroups = [];
                     return false;
-				}
-				//óäàëÿåì òåêóùóþ ñòðîêó èç ñïèñêà, ò.ê. äëÿ äàííîãî àëãîðèòìà íàì íå íàëî å¸ ïåðåñìàòðèâàòü
-				unset($this->_solveLinesByNumbers[$line->id]);
-			}
-			
-			//if ($this->timeIsUp())
-			//	return true;
-		}
-		return true;
+                }
+                //ÑƒÐ´Ð°Ð»ÑÐµÐ¼ Ñ‚ÐµÐºÑƒÑ‰ÑƒÑŽ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ð¸Ð· ÑÐ¿Ð¸ÑÐºÐ°, Ñ‚.Ðº. Ð´Ð»Ñ Ð´Ð°Ð½Ð½Ð¾Ð³Ð¾ Ð°Ð»Ð³Ð¾Ñ€Ð¸Ñ‚Ð¼Ð° Ð½Ð°Ð¼ Ð½Ðµ Ð½Ð°Ð»Ð¾ ÐµÑ‘ Ð¿ÐµÑ€ÐµÑÐ¼Ð°Ñ‚Ñ€Ð¸Ð²Ð°Ñ‚ÑŒ
+                unset($this->_solveLinesByNumbers[$line->id]);
+            }
+
+            //if ($this->timeIsUp())
+            //	return true;
+        }
+        return true;
     }
 
     private function solveLinesByGroups(): bool
     {
-		while(count($this->_solveLinesByGroups))
-		{
-			if ($this->timeIsUp())
-				return !$this->isTest;
-		
-			$this->_isChange = true;
-			$lines = $this->_solveLinesByGroups;
-			$this->_solveLinesByGroups = [];
-			
-			foreach($lines as $line)
-			{	
-				if ($this->timeIsUp())
-					return !$this->isTest;
-					
+        while(count($this->_solveLinesByGroups))
+        {
+            if ($this->timeIsUp())
+                return !$this->isTest;
+
+            $this->_isChange = true;
+            $lines = $this->_solveLinesByGroups;
+            $this->_solveLinesByGroups = [];
+
+            foreach($lines as $line)
+            {	
+                if ($this->timeIsUp())
+                    return !$this->isTest;
+
                 if (!$line->solveByGroups())
-				{
-					$this->_solveLinesByNumbers = [];
-					$this->_solveLinesByGroups = [];
+                {
+                    $this->_solveLinesByNumbers = [];
+                    $this->_solveLinesByGroups = [];
                     return false;
-				}
-			}
-			
-			//if ($this->timeIsUp())
-			//	return true;
-		}
-		return true;
+                }
+            }
+
+            //if ($this->timeIsUp())
+            //	return true;
+        }
+        return true;
     }
 	
-	protected function solveLines(): bool
-	{
-		while ($this->_isChange) {
-		
-			$this->_isChange = false;
-				
-			if (!$this->solveLinesByNumbers())
-				return false;
+    protected function solveLines(): bool
+    {
+        while ($this->_isChange) {
 
-			if (!$this->solveLinesByGroups())
-				return false;
+            $this->_isChange = false;
 
-		}
-		return true;
-	}
+            if (!$this->solveLinesByNumbers())
+                return false;
+
+            if (!$this->solveLinesByGroups())
+                return false;
+
+        }
+        return true;
+    }
 
 }

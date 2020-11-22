@@ -29,23 +29,23 @@ class Number extends BaseObject
         $this->_ind = $ind;
     }
 	
-	public function init(Numbers $numbers,$prev)
-	{
-		$this->setNumbers($numbers);
-		$this->setPrev($prev);
-	}
-	
-	public function setNumbers(Numbers $value)
-	{
-		$this->_numbers = $value;
-		$this->_line = $value->getLine();
-		$this->_field = $this->_line->getField();
-	}
-	
-	public function getLength()
-	{
-		return $this->_length;
-	}
+    public function init(Numbers $numbers,$prev)
+    {
+            $this->setNumbers($numbers);
+            $this->setPrev($prev);
+    }
+
+    public function setNumbers(Numbers $value)
+    {
+            $this->_numbers = $value;
+            $this->_line = $value->getLine();
+            $this->_field = $this->_line->getField();
+    }
+
+    public function getLength()
+    {
+            return $this->_length;
+    }
 
     public function getInd(): int
     {

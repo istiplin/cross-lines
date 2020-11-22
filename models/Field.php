@@ -4,7 +4,7 @@ namespace models;
 use \sys\BaseObject;
 
 //класс для работы с полем японского кроссворда, где оно разгадывается
-abstract class Field extends BaseObject
+class Field extends BaseObject
 {
     public $name;
 
@@ -13,31 +13,27 @@ abstract class Field extends BaseObject
     
     public $_width;
     public $_height;
-	
+
+    private $_cells = [];
 	
     private $_cellsArr = [];
-	private $_unknownCellsArr = [];
-	private $_unknownCellsCount = 0;
-	
-	public $duration;
-	public $beginTime;
-	
-	private $_horNums;
-	private $_vertNums;
-	
-	private $_solveLinesByNumbers = [];
-	private $_solveLinesByGroups = [];
-	
-	private $_solveLines = [];
-	
-	public $isTest = false;
-	public $testCells=[];
+    private $_unknownCellsArr = [];
+    private $_unknownCellsCount = 0;
 
-	public $t = [];
-	
-	protected $_isChange = true;
-	
-	public $maxDuration = 0;
+    public $duration;
+    public $beginTime;
+
+    private $_numsList = [];
+    private $_fieldCells;
+
+    public $isTest = false;
+    public $testCells=[];
+
+    public $t = [];
+
+    protected $_isChange = true;
+
+    public $maxDuration = 0;
 
     public function __construct($horNums,$vertNums,$cellsStrArr=null,$name=null)
     {
@@ -45,241 +41,191 @@ abstract class Field extends BaseObject
         
         $this->_width = count($vertNums);
         $this->_height = count($horNums);
-		
-		if ($cellsStrArr)
-			$cellsStrArr = $this->trimCellsStrArr($cellsStrArr);
-			
-        for ($i=0; $i<$this->_height; $i++)
-		{
-			$horCells = $this->getHorCells($i,$cellsStrArr);
-			$line = new Line($i,$horNums[$i],$horCells,true,$this);
-            $this->_horLines[$i] = $line;
-			$this->addSolveLine($line);
-		}
+	
+        $this->_numsList = array_merge($horNums,$vertNums);
+        
+        $this->_fieldCells = new FieldCells($horNums,$vertNums,$cellsStrArr,$name);
+    }
 
-        for ($i=0; $i<$this->_width; $i++)
-		{
-			$vertCells = $this->getVertCells($i,$cellsStrArr);
-			$line = new Line($i,$vertNums[$i],$vertCells,false,$this);
-            $this->_vertLines[$i] = $line;
-			$this->addSolveLine($line);
-		}
+    public function addUnknownCell($cell)
+    {
+        if ($cell->isUnknown())
+        {
+            $this->_unknownCellsArr[$cell->getId()]=$cell;
+            $this->_unknownCellsCount++;
+        }
+    }
+
+    public function deleteUnknownCell($ind)
+    {
+        unset($this->_unknownCellsArr[$ind]);
+        $this->_unknownCellsCount--;
     }
 	
-	private function trimCellsStrArr($value)
-	{
-		for ($i=0; $i<$this->_height; $i++)
-		{
-			$value[$i] = str_replace(' ','',$value[$i]);
-		}
-		return $value;
-	}
-	
-	private function getHorCells($ind,$cellsStrArr=null): string
-	{
-		if ($cellsStrArr===null)
-			return str_repeat(Cell::UNKNOWN_STATE, $this->_width);
-		else
-			return $cellsStrArr[$ind];
-	}
-	
-	private function getVertCells($ind,$cellsStrArr=null): string
-	{
-		if ($cellsStrArr===null)
-			return str_repeat(Cell::UNKNOWN_STATE, $this->_height);
-		else
-		{
-			$str = '';
-			for ($i=0; $i<$this->_height; $i++)
-				$str.=$cellsStrArr[$i][$ind];
-			return $str;
-		}
-	}
-	
-	abstract public function addSolveLine($line);
-	abstract public function addSolveLineByNumbers($line);
-	
-	public function addUnknownCell($cell)
-	{
-		if ($cell->isUnknown())
-		{
-			$this->_unknownCellsArr[$cell->getId()]=$cell;
-			$this->_unknownCellsCount++;
-		}
-	}
-	
-	public function deleteUnknownCell($ind)
-	{
-		unset($this->_unknownCellsArr[$ind]);
-		$this->_unknownCellsCount--;
-	}
-	
-	public function getUnknownCell($ind): Cell
-	{
-		return $this->_unknownCellsArr[$ind];
-	}
-	
-	public function getUnknownCellsCount(): int
-	{
-		return $this->_unknownCellsCount;
-	}
-	
-	private function createCell($x,$y,Line $line):Cell
-	{
-		if (isset($this->_cellsArr[$y][$x]))
-			return $this->_cellsArr[$y][$x];
-			
-		$cell = new Cell($x,$y,$this);
-		
-		$this->_cellsArr[$y][$x] = $cell;
-		$this->addUnknownCell($cell);
-		
-		return $this->_cellsArr[$y][$x] = $cell;
-	}
-	
-    public function getCell($ind,Line $line): Cell
+    public function getUnknownCell($ind): Cell
     {
-        if ($line->isHorizontal)
-			return $this->createCell($ind,$line->ind,$line);
-		return $this->createCell($line->ind,$ind,$line);
+        return $this->_unknownCellsArr[$ind];
+    }
+	
+    public function getUnknownCellsCount(): int
+    {
+        return $this->_unknownCellsCount;
     }
     
-	public function getWidth()
-	{
-		return $this->_width;
-	}
+    public function getWidth()
+    {
+        return $this->_width;
+    }
 	
     public function sizeView()
     {
         return $this->_width.'X'.$this->_height;
     }
 	
-	
-	abstract protected function solveLines(): bool;
-	
-	public function timeIsUp(): bool
-	{
-		$this->duration = microtime(true) - $this->beginTime;
-		if ($this->maxDuration)
-			return $this->duration>=$this->maxDuration;
-		return false;
-	}
-	
-	public function solve(): bool
-	{
-		$this->beginTime = microtime(true);
-		
-		if ($this->getUnknownCellsCount()==0)
-		{
-			$this->timeIsUp();
-			return true;
-		}
+    //abstract protected function solveLines(): bool;
+
+    public function timeIsUp(): bool
+    {
+        $this->duration = microtime(true) - $this->beginTime;
+        if ($this->maxDuration)
+            return $this->duration>=$this->maxDuration;
+        return false;
+    }
+    
+    protected function solveLines():bool
+    {
+        $linesCount = count($this->_numsList);
+        $linesIds = [];
+        for ($i = 0; $i < $linesCount; $i++) {
+            $linesIds[$i] = $i;
+        }
+        
+        $newLinesIds = [];
+        $isChange = false;
+        while(count($linesIds))
+        {
+            foreach ($linesIds as $lineId)
+            {   
+                $lineData = $this->_fieldCells->getLineOutput($lineId,$this->_numsList[$lineId]);
+                if ($lineData->isError){
+                    return false;
+                }
+                $newLinesIds = $lineData->getChangeIds($this->_height,$newLinesIds);
+                if (count($newLinesIds)){
+                    $isChange = true;
+                }
+                
+                if ($isChange AND $this->timeIsUp()){
+                    return !$this->isTest;
+                }
+            }
+            
+            $linesIds = $newLinesIds;
+            $newLinesIds = [];
+        }
+        return true;
+    }
+    
+    public function solve(): bool
+    {
+        return $this->_fieldCells->solve();
+        
+        $this->beginTime = microtime(true);
+
+        /*
+        if ($this->getUnknownCellsCount()==0)
+        {
+            $this->timeIsUp();
+            return true;
+        }
+         * 
+         */
 
         while ($this->_isChange) {
-			if ($this->timeIsUp())
-				return !$this->isTest;
-		
-			if (!$this->solveLines())
-				return false;
-			
+            if ($this->timeIsUp())
+                return !$this->isTest;
+
+            if (!$this->solveLines())
+                return false;
+
             $this->trySolve();
         }
-		
-		$this->timeIsUp();
-		return true;
-	}
 
-	private function clearTestCells()
-	{
-		foreach($this->testCells as $cell)
-			$cell->setUnknown();
-		$this->isTest = false;
-		
-		$this->testCells = [];
-	}
+        $this->timeIsUp();
+        return true;
+    }
+
+    private function clearTestCells()
+    {
+        foreach($this->testCells as $cell)
+            $cell->setUnknown();
+        $this->isTest = false;
+
+        $this->testCells = [];
+    }
 	
-	private function trySolveLines($trialCell):bool
-	{
-		$this->isTest = true;
-		$trialCell->setFull();
-		$this->_isChange = true;
-		if (!$this->solveLines())
-		{
-			$this->clearTestCells();
-			if ($this->timeIsUp())
-			{
-				$trialCell->setUnknown();
-				return true;
-			}
-			$trialCell->setEmpty();
-			$this->_isChange = true;
-			
-			return true;
-		}
-		else
-		{
-			if ($this->_unknownCellsCount==0)
-				return true;
-			$this->clearTestCells();
-		}
-		return false;
-	}
-	
-	//разгадывает кроссворд методом проб и ошибок
-	private function trySolve()
-	{
-		foreach($this->_unknownCellsArr as $cell)
-		{
-			if ($this->timeIsUp())
-				return;
-			if (
-				$cell->leftIsEmpty() AND $cell->upIsEmpty()
-				OR $cell->leftIsEmpty() AND $cell->downIsEmpty()
-				OR $cell->rightIsEmpty() AND $cell->upIsEmpty() 
-				OR $cell->rightIsEmpty() AND $cell->downIsEmpty()
-				OR $cell->leftIsEmpty() OR $cell->rightIsEmpty() OR $cell->upIsEmpty() OR $cell->downIsEmpty()
-			)
-			{
-				if ($this->trySolveLines($cell))
-					return;
-			}
-		}
-	}
-	
-	public function getCells()
-	{
-		$cells=[];
-        for ($y=0; $y<$this->_height; $y++)
+    private function trySolveLines($trialCell):bool
+    {
+        $this->isTest = true;
+        $trialCell->setFull();
+        $this->_isChange = true;
+        if (!$this->solveLines())
         {
-            for($x=0; $x<$this->_width; $x++)
-                $cells[$y][$x]=$this->_cellsArr[$y][$x]->state;
+            $this->clearTestCells();
+            if ($this->timeIsUp())
+            {
+                $trialCell->setUnknown();
+                return true;
+            }
+            $trialCell->setEmpty();
+            $this->_isChange = true;
+
+            return true;
         }
-		return $cells;
-	}
+        else
+        {
+            if ($this->_unknownCellsCount==0)
+                return true;
+            $this->clearTestCells();
+        }
+        return false;
+    }
 	
-	public function getHorNums()
-	{
-		if ($this->_horNums!==null)
-			return $this->_horNums;
-			
-		$this->_horNums = [];
-		for ($i=0; $i<$this->_height; $i++)
-			$this->_horNums[] = $this->_horLines[$i]->getNumbers()->getLengthArray();
-		
-		return $this->_horNums;
-	}
+    //разгадывает кроссворд методом проб и ошибок
+    private function trySolve()
+    {
+        foreach($this->_unknownCellsArr as $cell)
+        {
+            if ($this->timeIsUp())
+                return;
+            if (
+                $cell->leftIsEmpty() AND $cell->upIsEmpty()
+                OR $cell->leftIsEmpty() AND $cell->downIsEmpty()
+                OR $cell->rightIsEmpty() AND $cell->upIsEmpty() 
+                OR $cell->rightIsEmpty() AND $cell->downIsEmpty()
+                OR $cell->leftIsEmpty() OR $cell->rightIsEmpty() OR $cell->upIsEmpty() OR $cell->downIsEmpty()
+            )
+            {
+                if ($this->trySolveLines($cell))
+                    return;
+            }
+        }
+    }
 	
-	public function getVertNums()
-	{
-		if ($this->_vertNums!==null)
-			return $this->_vertNums;
-			
-		$this->_vertNums = [];
-		for ($i=0; $i<$this->_width; $i++)
-			$this->_vertNums[] = $this->_vertLines[$i]->getNumbers()->getLengthArray();
-		
-		return $this->_vertNums;
-	}
+    public function getCells()
+    {
+        return $this->_fieldCells->getCells();
+    }
+	
+    public function getHorNums()
+    {
+        return $this->_fieldCells->getHorNums();
+    }
+
+    public function getVertNums()
+    {
+        return $this->_fieldCells->getVertNums();
+    }
 	
     public function getView()
     {
@@ -290,21 +236,21 @@ abstract class Field extends BaseObject
                 $view.=$this->_cellsArr[$y][$x]->state;
             $view.='<br>';
         }
-		$view.='Длительность: '.$this->duration.' сек.<br>';
+        $view.='Длительность: '.$this->duration.' сек.<br>';
         return $view;
     }
 	
-	public function unknownCellsArrView()
-	{
-		echo '(x,y):<br>';
-		foreach($this->_unknownCellsArr as $unknownCell)
-		{
-			echo "({$unknownCell->getX()},{$unknownCell->getY()})<br>";
-			echo "&nbsp;&nbsp;&nbsp;&nbsp;BY FULL:{$unknownCell->unknownCountByFull};<br>";
-			echo "&nbsp;&nbsp;&nbsp;&nbsp;BY EMPTY:{$unknownCell->unknownCountByEmpty};<br>";
-		}
-			
-		echo '<br>';
-	}
+    public function unknownCellsArrView()
+    {
+        echo '(x,y):<br>';
+        foreach($this->_unknownCellsArr as $unknownCell)
+        {
+            echo "({$unknownCell->getX()},{$unknownCell->getY()})<br>";
+            echo "&nbsp;&nbsp;&nbsp;&nbsp;BY FULL:{$unknownCell->unknownCountByFull};<br>";
+            echo "&nbsp;&nbsp;&nbsp;&nbsp;BY EMPTY:{$unknownCell->unknownCountByEmpty};<br>";
+        }
+
+        echo '<br>';
+    }
 
 }
