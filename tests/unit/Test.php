@@ -24,22 +24,18 @@ class Test extends \Codeception\Test\Unit
         }
     }
 
-    private function checkSolveLine(Line $line): bool
+    private function checkSolveLine(Line $line)
     {
-        $lineData = $line->getOutput();
+        $line->trySolve();
+        $lineData = $line->getData();
 
-        expect($this->getMessage($lineData),$lineData->result)->equals($lineData->getExpectedResult());
-        
-        return true;
-    }
-    
-    private function getMessage($lineData)
-    {
-        return $lineData->getMirrorStatus().'message: '.$lineData->ind.PHP_EOL.
+        $message = $lineData->getMirrorStatus().'message: '.$line->getInd().PHP_EOL.
                                 $lineData->getNumbersView().PHP_EOL.
                                 $lineData->getCellsStr().PHP_EOL.
                                 $lineData->getExpectedResult().' is expected result'.PHP_EOL.
-                                $lineData->result.' no expected result'.PHP_EOL.
+                                $lineData->getResult().' no expected result'.PHP_EOL.
                                 $lineData->getErrorMessage();
+        
+        expect($message,$lineData->getResult())->equals($lineData->getExpectedResult());
     }
 }

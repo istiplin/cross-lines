@@ -6,12 +6,12 @@ use \sys\BaseObject;
 //класс для работы с числом, характеризующий количество разукрашенных соседних клеток в строке
 class Number extends BaseObject
 {
-	private $_numbers;
-	private $_line;
-	private $_field;
-	public $cells;
+    private $_numbers;
+    private $_line;
+    private $_field;
+    public $cells;
         
-	private $_length;		//показывает сколько должно быть разукрашено клеток подряд в строке
+    private $_length;		//показывает сколько должно быть разукрашено клеток подряд в строке
 		
     private $_minPos;				//минимально возможная координата, где начинается разукрашенная клетка
     private $_maxPos;				//максимально возможная координата, где заканчивается разукрашенная клетка

@@ -8,7 +8,7 @@
     
     $data = $datas[$fieldInd];
 
-    $field = new models\FastField($data[0], $data[1],$data[2],$data['name']);
+    $field = new models\Field($data[0], $data[1],$data[2],$data['name']);
 	
 ?>
 <!DOCTYPE html>

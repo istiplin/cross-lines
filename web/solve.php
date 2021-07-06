@@ -31,8 +31,8 @@
     if (empty($_POST))
     {
         $datas = require '../tests/_data/fieldSolves.php';
-        //$fieldInd = 8;
-        $fieldInd = 7;
+        $fieldInd = 8;
+        //$fieldInd = 7;
         $data = $datas[$fieldInd];
         $horNums = $data[0];
         $vertNums = $data[1];
@@ -41,7 +41,7 @@
     
     
 
-    $field = new models\FieldCells($horNums, $vertNums, $cellsStr);
+    $field = new models\Field($horNums, $vertNums, $cellsStr);
     
     //$field->maxDuration = 1.0;
     

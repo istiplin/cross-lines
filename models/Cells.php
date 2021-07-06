@@ -237,8 +237,7 @@ class Cells extends BaseObject implements \ArrayAccess
         $groupEnd = 'groupEnd';
         $nextGroupIsEmpty = 'nextGroupIsEmpty';
         $prevIsFull = 'prevIsFull';
-        if ($direction=='left')
-        {
+        if ($direction=='left'){
             $next = -1;
             $groupStart = 'groupEnd';
             $groupEnd = 'groupStart';
@@ -246,10 +245,8 @@ class Cells extends BaseObject implements \ArrayAccess
             $prevIsFull = 'nextIsFull';
         }
         
-        if (-1<$fullBegPos AND $fullBegPos<$this->_count)
-        {
-            if ($this->_list[$fullBegPos]->isUnknown() AND $this->_list[$fullBegPos]->$prevIsFull())
-            {
+        if (-1<$fullBegPos AND $fullBegPos<$this->_count){
+            if ($this->_list[$fullBegPos]->isUnknown() AND $this->_list[$fullBegPos]->$prevIsFull()){
                 $fullBegPos+=$next;
             }
         }
@@ -259,9 +256,10 @@ class Cells extends BaseObject implements \ArrayAccess
         while(-1<$currPos AND $currPos<$this->_count)
         {
             //если текущая клетка - крестик
-            if ($this->_list[$currPos]->isEmpty())
+            if ($this->_list[$currPos]->isEmpty()){
                 //смещаем указатели в следующую группу
                 $fullBegPos = $currPos = $this->_list[$currPos]->$groupEnd + $next;
+            }
             //иначе если текущая клетка не заполнена
             elseif ($this->_list[$currPos]->isUnknown()) {
                 //определяем конечную позицию незаполненной группы
@@ -271,23 +269,26 @@ class Cells extends BaseObject implements \ArrayAccess
                 //если расстояние больше текущего числа или
                 if ($dist > $fullLength OR
                     //расстояние равно текущему числу и следующая группа крестик или конец
-                    $dist == $fullLength AND $this->_list[$currPos]->$nextGroupIsEmpty)
+                    $dist == $fullLength AND $this->_list[$currPos]->$nextGroupIsEmpty){
                     //считаем последеняя пока что результирующая позиция, окончательно ей являестя
                     return $fullBegPos;
-                else
+                } else {
                     //иначе смещаем указатель к следующей группе
                     $currPos = $this->_list[$currPos]->$groupEnd + $next;
+                }
             }
             //иначе если текущая клетка закрашена
             elseif ($this->_list[$currPos]->isFull()) {
                 //если длина текущей группы больше текущего числа
-                if ($this->_list[$currPos]->groupLength > $fullLength)
+                if ($this->_list[$currPos]->groupLength > $fullLength){
                     //смещаем указатели на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
                     $fullBegPos = $currPos = $this->_list[$currPos]->$groupEnd + $next*2;
+                }
                 //если длина текущей группы равно текущему числу
-                elseif ($this->_list[$currPos]->groupLength == $fullLength)
+                elseif ($this->_list[$currPos]->groupLength == $fullLength){
                     //считаем последняя пока что результирующая позиция, окончательно ей являестя
                     return $this->_list[$currPos]->$groupStart;
+                }
                 //если длина текущей группы меньше текущего числа
                 elseif ($this->_list[$currPos]->groupLength < $fullLength) {
                     //определяем конечную позицию текущей группы
@@ -296,29 +297,32 @@ class Cells extends BaseObject implements \ArrayAccess
                     $dist = $this->_list[$fullBegPos]->getDist($endFullPos);
 
                     //если расстояние меньше текущего числа
-                    if ($dist < $fullLength)
+                    if ($dist < $fullLength){
                         //иначе смещаем указатель к следующей группе
                         $currPos = $this->_list[$currPos]->$groupEnd + $next;
+                    }
                     //иначе если расстояние равно текущему числу
-                    elseif ($dist == $fullLength)
+                    elseif ($dist == $fullLength){
                         //считаем, что последняя, пока что, результирующая позиция, окончательно ей являестя
                         return $fullBegPos;
+                    }
                     //иначе если расстояние больше текущего числа
-                    elseif ($dist > $fullLength)
-                    {
+                    elseif ($dist > $fullLength){
                         //если результирующая позиция находится в незаполненной клетке
-                        if ($this->_list[$fullBegPos]->isUnknown())
+                        if ($this->_list[$fullBegPos]->isUnknown()){
                             //считаем, что она окончательно является результирующей
                             $fullBegPos = $endFullPos - $next*($fullLength - 1);
+                        }
                         //иначе если  результирующая позиция находится в закрашенной клетке
-                        elseif ($this->_list[$fullBegPos]->isFull())
+                        elseif ($this->_list[$fullBegPos]->isFull()){
                             //смещаем её на 2 позиции вправо, мысленно полагая, что следующая клетка крестик, а потом идет разукрашенная
                             $fullBegPos = $this->_list[$fullBegPos]->$groupEnd + $next*2;
+                        }
                     }
                 }
             }
         }
-		throw new \Exception('Error! Line:'.$this->line->ind.' Method '.__METHOD__.' return is null. '."[$fullBegPos1,$fullLength,$direction] {$this->getData()}");
+        throw new \Exception('Error! Line:'.$this->line->ind.' Method '.__METHOD__.' return is null. '."[$fullBegPos1,$fullLength,$direction] {$this->getData()}");
     }
 
     public function getNumbers(): Numbers
