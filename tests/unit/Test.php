@@ -26,16 +26,20 @@ class Test extends \Codeception\Test\Unit
 
     private function checkSolveLine(Line $line)
     {
-        $line->trySolve();
-        $lineData = $line->getData();
-
-        $message = $lineData->getMirrorStatus().'message: '.$line->getInd().PHP_EOL.
-                                $lineData->getNumbersView().PHP_EOL.
-                                $lineData->getCellsStr().PHP_EOL.
-                                $lineData->getExpectedResult().' is expected result'.PHP_EOL.
-                                $lineData->getResult().' no expected result'.PHP_EOL.
-                                $lineData->getErrorMessage();
+        try{
+            $baseCells = $line->getCells();
+            $result = $line->solve();
+        } catch(\Exception $e) {
+            throw new \Exception('error ind:'.$line->getInd().$line->getMirrorStatus());
+        }
         
-        expect($message,$lineData->getResult())->equals($lineData->getExpectedResult());
+
+        $message = $line->getMirrorStatus().'message: '.$line->getInd().PHP_EOL.
+                                $line->getNumbersView().PHP_EOL.
+                                $baseCells.PHP_EOL.
+                                $line->getExpectedResult().' is expected result'.PHP_EOL.
+                                $result.' no expected result'.PHP_EOL;
+
+        expect($message,$result)->equals($line->getExpectedResult());
     }
 }

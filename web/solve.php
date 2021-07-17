@@ -43,7 +43,7 @@
 
     $field = new models\Field($horNums, $vertNums, $cellsStr);
     
-    //$field->maxDuration = 1.0;
+    //$field->maxDuration = 0.1;
     
     $field->solve();
     //$responce['horNums'] = json_encode($_POST['horNums']);

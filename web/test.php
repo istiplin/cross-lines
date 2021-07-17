@@ -4,7 +4,9 @@
     $dataName = 'fieldSolves.php';
     $datas = require '../tests/_data/'.$dataName;
     
-    $fieldInd = 7;
+    $fieldInd = 10;
+    //$fieldInd = 7;
+    //$fieldInd = 0;
     
     $data = $datas[$fieldInd];
 

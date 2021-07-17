@@ -7,7 +7,10 @@ use \sys\BaseObject;
  * Класс для работы со всеми клетками поля класса Field
  */
 class Field extends BaseObject{
-
+    const UNKNOWN_STATE = '0';
+    const FULL_STATE = '1';
+    const EMPTY_STATE = '2';
+    
     public $name;
     
     public $maxDuration;
@@ -104,19 +107,20 @@ class Field extends BaseObject{
             $this->_solveLinesIds = [];
             foreach ($solveLinesIds as $lineId){
                 $line = $this->getLine($lineId);
-                $line->trySolve();
-                $lineData = $line->getData();
-                if ($lineData->getIsError()){
+                $result = $line->solve();
+                if (!$result){
                     return false;
                 }
-                $this->setLineCells($lineId,$lineData->getResult());
+                
+                
+                $this->setLineCells($lineId,$result);
                 
                 if (!$isChange AND count($this->_solveLinesIds)){
                     $isChange = true;
                 }
                 
                 if ($isChange AND $this->timeIsUp()){
-                    return !$this->isTest;
+                    return !$this->_isTest;
                 }
             }
         }
@@ -135,7 +139,7 @@ class Field extends BaseObject{
                 return;
             }
 
-            if ($this->trySolveLinesByTrial($id,Cell::FULL_STATE,Cell::EMPTY_STATE))
+            if ($this->trySolveLinesByTrial($id,self::FULL_STATE,self::EMPTY_STATE))
                 return;
 
         }
@@ -209,11 +213,11 @@ class Field extends BaseObject{
                     $cellsStrArr[$y] = str_replace(' ','',$cellsStrArr[$y]);
                     $state = $cellsStrArr[$y][$x];
                 } else {
-                    $state = Cell::UNKNOWN_STATE;
+                    $state = self::UNKNOWN_STATE;
                 }
 
                 $this->setCellState($id,$state);
-                if ($state == Cell::UNKNOWN_STATE){
+                if ($state == self::UNKNOWN_STATE){
                     $this->addSolveLinesIdsByCellId($id);
                 }
                 $id++;
@@ -222,7 +226,7 @@ class Field extends BaseObject{
     }
 
     private function setCellState($id,$state){
-        if ($state===Cell::UNKNOWN_STATE){
+        if ($state===self::UNKNOWN_STATE){
             unset($this->_cells[$id]);
             if ($this->_isTest) {
                 $this->_unknownCells[$id] = $this->_testCells[$id];
@@ -243,13 +247,13 @@ class Field extends BaseObject{
         if (array_key_exists($id, $this->_cells)) {
             return $this->_cells[$id];
         } else {
-            return Cell::UNKNOWN_STATE;
+            return self::UNKNOWN_STATE;
         }
     }
 
     private function getLine($lineId): Line{
-        $cellsStr = $this->getLineCells($lineId);
-        return new Line($lineId,$this->_numsList[$lineId],$cellsStr);
+        $cells = $this->getLineCells($lineId);
+        return new Line($lineId,$this->_numsList[$lineId],$cells);
     }
     
     private function addSolveLinesIdsByCellId($cellId){
@@ -266,7 +270,7 @@ class Field extends BaseObject{
     
     private function offTest(){
         foreach($this->_testCells as $id=>$count){
-            $this->setCellState($id, Cell::UNKNOWN_STATE);
+            $this->setCellState($id, self::UNKNOWN_STATE);
         }
         $this->_solveLinesIds = [];
         $this->_isTest = false;
@@ -295,7 +299,7 @@ class Field extends BaseObject{
             return true;
         
         $leftId = $id-1;
-        if (isset($this->_cells[$leftId]) AND $this->_cells[$leftId]==Cell::EMPTY_STATE){
+        if (isset($this->_cells[$leftId]) AND $this->_cells[$leftId]==self::EMPTY_STATE){
             return true;
         }
         
@@ -309,7 +313,7 @@ class Field extends BaseObject{
         }
         
         $rightId = $id+1;
-        if (isset($this->_cells[$rightId]) AND $this->_cells[$rightId]==Cell::EMPTY_STATE){
+        if (isset($this->_cells[$rightId]) AND $this->_cells[$rightId]==self::EMPTY_STATE){
             return true;
         }
          
@@ -323,7 +327,7 @@ class Field extends BaseObject{
             return true;
         }
         
-        if (isset($this->_cells[$upId]) AND $this->_cells[$upId]==Cell::EMPTY_STATE){
+        if (isset($this->_cells[$upId]) AND $this->_cells[$upId]==self::EMPTY_STATE){
             return true;
         }
         
@@ -337,7 +341,7 @@ class Field extends BaseObject{
             return true;
         
         
-        if (isset($this->_cells[$downId]) AND $this->_cells[$downId]==Cell::EMPTY_STATE){
+        if (isset($this->_cells[$downId]) AND $this->_cells[$downId]==self::EMPTY_STATE){
             return true;
         }
         
