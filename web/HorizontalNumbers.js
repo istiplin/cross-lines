@@ -1,34 +1,31 @@
 class HorizontalNumbers extends Numbers{
-	constructor(field,numsList) {
-		super(field,numsList);
-		this._canvas = field.elem.getElementsByClassName('horNums')[0];
-		this._ctx = this._canvas.getContext("2d");
-		this.resizeCanvas();
-	}
-	get canvasWidth(){
-		return (this.lineNumsMaxCount+2)*this._field.step;
-	}
-	
-	get canvasHeight(){
-		return (this.lineCount+2)*this._field.step;
-	}
-	
-	getLineInd(cellX,cellY){
-		return cellY-1;
-	}
-	
-	getNumberInd(cellX,cellY){
-		let lineInd = this.getLineInd(cellX,cellY);
-		
-		if (this._numsList[lineInd]===undefined)
-			return 0;
-		
-		return cellX - (this.lineNumsMaxCount - this._numsList[lineInd].length+1);
-	}
-	
-	getNumCellX(x,y) {
-		return (x+1)*this._field.step+1;
-	}
+    constructor(field,numsList,className = null) {
+        super(field,numsList,'horNums');
+    }
+    get canvasWidth(){
+        return this.getPixelsCount(this.lineNumsMaxCount);
+    }
+
+    get canvasHeight(){
+        return this.getPixelsCount(this.lineCount);
+    }
+
+    getLineInd(cellX,cellY){
+        return cellY-1;
+    }
+
+    getNumberInd(cellX,cellY){
+        let lineInd = this.getLineInd(cellX,cellY);
+
+        if (this._numsList[lineInd]===undefined)
+            return 0;
+
+        return cellX - (this.lineNumsMaxCount - this._numsList[lineInd].length+1);
+    }
+
+    getNumCellX(x,y) {
+        return (x+1)*this._field.step+1;
+    }
 	
 	getNumCellY(x,y) {
 		return (y+2)*this._field.step-3;

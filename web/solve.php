@@ -1,5 +1,4 @@
 <?php
-
     ini_set('max_execution_time',50);
 
     $cellsStr = null;
@@ -31,8 +30,8 @@
     if (empty($_POST))
     {
         $datas = require '../tests/_data/fieldSolves.php';
-        $fieldInd = 8;
-        //$fieldInd = 7;
+        //$fieldInd = 8;
+        $fieldInd = 7;
         $data = $datas[$fieldInd];
         $horNums = $data[0];
         $vertNums = $data[1];
@@ -46,8 +45,9 @@
     //$field->maxDuration = 0.1;
     
     $field->solve();
-    //$responce['horNums'] = json_encode($_POST['horNums']);
-    //$responce['vertNums'] = json_encode($_POST['vertNums']);
+    $responce['begCells'] = $_POST['cells'];
+    $responce['horNums'] = json_encode($horNums);
+    $responce['vertNums'] = json_encode($vertNums);
     $responce['cells'] = $field->getCells();
 
     echo json_encode($responce);

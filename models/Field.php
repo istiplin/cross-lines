@@ -27,6 +27,9 @@ class Field extends BaseObject{
     private $_unknownCells = [];
     private $_solveLinesIds = [];
     
+    private $_cellsTrialLevels = [];
+    private $_currentTrialLevel = -1;
+    
     private $_testCells = [];
     private $_isTest = false;
     private $_currTestCellId;   //номер клетки, которая рассматривается при методе от противного
@@ -94,39 +97,52 @@ class Field extends BaseObject{
                 $this->solveByTrial();
             }
         }
-
+        
         //$this->timeIsUp();
         return true;
-    }
 
-    protected function solveLines():bool{
-        $isChange = false;
-        while(count($this->_solveLinesIds))
-        {
-            $solveLinesIds = $this->_solveLinesIds;
-            $this->_solveLinesIds = [];
-            foreach ($solveLinesIds as $lineId){
-                $line = $this->getLine($lineId);
-                $result = $line->solve();
-                if (!$result){
-                    return false;
-                }
-                
-                
-                $this->setLineCells($lineId,$result);
-                
-                if (!$isChange AND count($this->_solveLinesIds)){
-                    $isChange = true;
-                }
-                
-                if ($isChange AND $this->timeIsUp()){
-                    return !$this->_isTest;
+        
+        /*
+        if ($this->solveLines()){
+            $this->_currentTrialLevel++;
+            $cellId = key($this->_unknownCells);
+
+            //echo 'beg-'.$cellId.'<br>';
+
+            $this->setCellState($cellId, Field::FULL_STATE);
+            $this->addSolveLinesIdsByCellId($cellId);
+        } else {
+            return false;
+        }
+        
+        $res = $this->solveLines();
+        
+            $cellsTrialLevels = array_reverse($this->_cellsTrialLevels,true);
+            $lastCellId = null;
+            foreach ($cellsTrialLevels as $cellId=>$trialLevel){
+                if ($trialLevel==$this->_currentTrialLevel){
+                    $lastCellId = $cellId;
+                    $this->setCellState($cellId, Field::UNKNOWN_STATE);
+                    unset($this->_cellsTrialLevels[$cellId]);
+                } else {
+                    break;
                 }
             }
-        }
+            $this->_currentTrialLevel--;
+
+            if (!$res){
+                $this->setCellState($lastCellId, Field::EMPTY_STATE);
+                $this->addSolveLinesIdsByCellId($lastCellId);
+            }
+        
+        
+        
+        //$this->timeIsUp();
         return true;
+         * 
+         */
     }
-    
+
     //разгадывает кроссворд методом проб и ошибок
     private function solveByTrial(){
         //$sort = $this->getSortUnknownCells();
@@ -174,7 +190,34 @@ class Field extends BaseObject{
         return false;
     }
 
-    private function setLineCells($lineId,$lineCells){
+    private function solveLines():bool{
+        $isChange = false;
+        while(count($this->_solveLinesIds)){
+            $solveLinesIds = $this->_solveLinesIds;
+            $this->_solveLinesIds = [];
+            foreach ($solveLinesIds as $lineId){
+                $line = $this->getLine($lineId);
+                if (!$line->solve()){
+                    return false;
+                }
+                $this->setLine($line);
+                
+                if (!$isChange AND count($this->_solveLinesIds)){
+                    $isChange = true;
+                }
+                
+                if ($isChange AND $this->timeIsUp()){
+                    return !$this->_isTest;
+                }
+            }
+        }
+        return true;
+    }
+    
+    private function setLine(Line $line){
+        $lineId = $line->getInd();
+        $lineCells = $line->getCells();
+        
         if (!empty($this->_solveLinesIds)){
             unset($this->_solveLinesIds[$lineId]);
         }
@@ -234,12 +277,17 @@ class Field extends BaseObject{
             } else {
                 $this->_unknownCells[$id] = 0;
             }
+
         } else {
             $this->_cells[$id] = $state;
             if ($this->_isTest){
                 $this->_testCells[$id] = $this->_unknownCells[$id];
             }
             unset($this->_unknownCells[$id]);
+            
+            if ($this->_currentTrialLevel!=-1){
+                $this->_cellsTrialLevels[$id] = $this->_currentTrialLevel;
+            }
         }
     }
     

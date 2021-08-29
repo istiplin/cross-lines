@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<script type='text/javascript' src='Cells.js'></script>
-		<script type='text/javascript' src='Numbers.js'></script>
-		<script type='text/javascript' src='HorizontalNumbers.js'></script>
-		<script type='text/javascript' src='VerticalNumbers.js'></script>
-		<script type='text/javascript' src='jquery.js'></script>
-		<script type='text/javascript' src='Field.js'></script>
-		<link rel="stylesheet" type="text/css" href="style.css" />
+            <script type='text/javascript' src='NumbersMenu.js'></script>
+            <script type='text/javascript' src='Cells.js'></script>
+            <script type='text/javascript' src='Numbers.js'></script>
+            <script type='text/javascript' src='HorizontalNumbers.js'></script>
+            <script type='text/javascript' src='VerticalNumbers.js'></script>
+            <script type='text/javascript' src='jquery.js'></script>
+            <script type='text/javascript' src='Field.js'></script>
+            <link rel="stylesheet" type="text/css" href="style.css" />
 	</head>
 	<body>
 	<a href='../'>назад</a><br>
@@ -79,17 +80,21 @@
 		
 		function solve()
 		{
-			$.ajax({
-				url: 'solve.php',
-				dataType: 'json',
-				method: 'POST',
-				data: {horNums:field.horNumsList,vertNums:field.vertNumsList,cells:field.cellsList},
-				success: function (data) {
-					field.redraw(data['cells']);
-					console.log(data);
-				}
-			});
-			console.log(field.horNumsSum+' '+field.vertNumsSum);
+                    $.ajax({
+                        url: 'solve.php',
+                        dataType: 'json',
+                        method: 'POST',
+                        //async: true,
+                        data: {horNums:field.horNumsList,vertNums:field.vertNumsList,cells:field.cellsList},
+                        success: function (data) {
+                            field.redraw(data['cells']);
+                            console.log(data);
+                        },
+                        //complete: function(){
+                        //    console.log('ssf');
+                        //}
+                    });
+                    //console.log(field.horNumsSum+' '+field.vertNumsSum);
 		}
 		
 		function deleteNumbers()

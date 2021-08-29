@@ -16,6 +16,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
+                <script type='text/javascript' src='NumbersMenu.js'></script>
 		<script type='text/javascript' src='Cells.js'></script>
 		<script type='text/javascript' src='Numbers.js'></script>
 		<script type='text/javascript' src='HorizontalNumbers.js'></script>
